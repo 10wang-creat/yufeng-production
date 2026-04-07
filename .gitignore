@@ -1,0 +1,7 @@
+*.mdb
+*.ldb
+mdb_export/
+__pycache__/
+*.pyc
+desktop.ini
+Thumbs.db
