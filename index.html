@@ -715,13 +715,12 @@ function populateMonthSelects() {
   const sorted = [...yms].sort().reverse();
   ['pw-filter-month','rpt-month'].forEach(id=>{
     const sel = document.getElementById(id);
-    if(!sel) return;
-    const firstOpt = sel.options[0];
+    const firstOpt = sel.options[0]; // keep the placeholder
     sel.innerHTML = '';
     sel.add(firstOpt);
     sorted.forEach(ym=>{
       const [y,m] = ym.split('-');
-      sel.add(new Option(y+'年'+parseInt(m)+'月', ym));
+      sel.add(new Option(`${y}年${parseInt(m)}月`, ym));
     });
   });
 }
