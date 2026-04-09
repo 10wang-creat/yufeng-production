@@ -123,12 +123,19 @@ tr:hover { background:var(--hover); }
   <button onclick="showPanel('piecework')">🔧 計件登記</button>
   <button onclick="showPanel('inventory')">📦 庫存管理</button>
   <button onclick="showPanel('progress')">🏭 加工進度</button>
+  <button onclick="showPanel('loss')">📉 耗損追蹤</button>
   <button onclick="showPanel('report')">📋 月報表</button>
   <button onclick="showPanel('data')">💾 資料管理</button>
 </nav>
 
 <!-- ====== DASHBOARD ====== -->
 <div id="panel-dashboard" class="panel active">
+  <div class="card" style="padding:12px 20px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:15px;font-weight:600;color:var(--accent2)">📊 年度總覽</span>
+      <select id="dash-year" onchange="renderDashboard()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:15px;font-weight:600;font-family:inherit;background:#fff"></select>
+    </div>
+  </div>
   <div class="stat-grid" id="dashStats"></div>
   <div class="card">
     <h2>📈 各月產量趨勢</h2>
@@ -153,11 +160,13 @@ tr:hover { background:var(--hover); }
     <div class="form-row">
       <div class="form-group"><label>日期</label><input type="date" id="pw-date"></div>
       <div class="form-group"><label>員工</label><select id="pw-emp"></select></div>
-      <div class="form-group"><label>產品</label><select id="pw-prod" style="max-width:300px"></select></div>
+      <div class="form-group"><label>產品</label><select id="pw-prod" style="max-width:300px" onchange="onProdChange()"></select></div>
+      <div class="form-group"><label>單價</label><input type="number" id="pw-price" step="0.01" min="0" style="width:90px" title="可修改，預設帶入產品單價"></div>
       <div class="form-group"><label>數量</label><input type="number" id="pw-qty" min="0" style="width:100px"></div>
       <div class="form-group"><label>出貨數量</label><input type="number" id="pw-shipqty" min="0" style="width:100px"></div>
       <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="addWorkRecord()">新增</button></div>
     </div>
+    <div id="pw-price-hint" style="font-size:12px;color:var(--text2);margin-top:4px"></div>
   </div>
   <div class="card">
     <h2>📋 計件紀錄查詢</h2>
@@ -174,6 +183,11 @@ tr:hover { background:var(--hover); }
       </table>
     </div>
   </div>
+  <div class="card" id="pw-salary-card">
+    <h2>💰 員工月薪彙總</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">請先在上方選擇月份，即可看到該月每位員工的計件薪資明細</p>
+    <div id="pw-salary"></div>
+  </div>
 </div>
 
 <!-- ====== INVENTORY ====== -->
@@ -182,22 +196,32 @@ tr:hover { background:var(--hover); }
     <h2>📦 新增庫存異動</h2>
     <div class="form-row">
       <div class="form-group"><label>產品</label><select id="inv-prod"></select></div>
+      <div class="form-group"><label>批號</label><input type="text" id="inv-lot" placeholder="例：L2024-001" style="width:140px"></div>
       <div class="form-group"><label>客戶</label><select id="inv-cust"></select></div>
       <div class="form-group"><label>進貨數量</label><input type="number" id="inv-in" min="0" style="width:100px"></div>
       <div class="form-group"><label>銷貨數量</label><input type="number" id="inv-out" min="0" style="width:100px"></div>
+      <div class="form-group"><label>不良品</label><input type="number" id="inv-defect" min="0" style="width:80px"></div>
       <div class="form-group"><label>日期</label><input type="date" id="inv-date"></div>
-      <div class="form-group"><label>備註</label><input type="text" id="inv-note" style="width:160px"></div>
+      <div class="form-group"><label>備註</label><input type="text" id="inv-note" style="width:140px"></div>
       <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="addInvRecord()">新增</button></div>
     </div>
   </div>
   <div class="card">
+    <h2>📊 各批號庫存總覽</h2>
+    <div class="filter-bar no-print">
+      <label>搜尋:</label><input type="text" id="inv-lot-filter" placeholder="產品或批號..." oninput="renderLotSummary()" style="width:200px">
+    </div>
+    <div id="inv-lot-summary"></div>
+  </div>
+  <div class="card">
     <h2>📋 庫存異動紀錄</h2>
     <div class="filter-bar no-print">
-      <label>搜尋產品:</label><input type="text" id="inv-filter" placeholder="輸入產品編號或名稱..." oninput="filterInv()" style="width:200px">
+      <label>搜尋:</label><input type="text" id="inv-filter" placeholder="產品、批號或備註..." oninput="filterInv()" style="width:200px">
+      <label>批號:</label><select id="inv-filter-lot" onchange="filterInv()"><option value="">全部批號</option></select>
     </div>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>序號</th><th>產品</th><th>客戶</th><th class="num">進貨</th><th class="num">銷貨</th><th class="num">庫存量</th><th>進貨日</th><th>銷貨日</th><th>備註</th></tr></thead>
+        <thead><tr><th>序號</th><th>產品</th><th>批號</th><th>客戶</th><th class="num">進貨</th><th class="num">銷貨</th><th class="num">不良品</th><th class="num">庫存量</th><th>日期</th><th>備註</th></tr></thead>
         <tbody id="inv-tbody"></tbody>
       </table>
     </div>
@@ -243,6 +267,77 @@ tr:hover { background:var(--hover); }
   </div>
 </div>
 
+<!-- ====== LOSS TRACKING ====== -->
+<div id="panel-loss" class="panel">
+  <div class="card">
+    <h2>📉 製程耗損追蹤</h2>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">追蹤每個批次從鐵材到成品的各階段耗損情況。製程：鐵材 → 鍛造 → 車床 → 銑床 → 熱處理 → 染黑 → 成品</p>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group"><label>產品</label><select id="loss-product" onchange="filterLossBatches()" style="min-width:200px"><option value="">-- 全部產品 --</option></select></div>
+      <div class="form-group"><label>批次</label><select id="loss-batch" onchange="renderLossBatch()" style="min-width:160px"><option value="">-- 請選擇 --</option></select></div>
+      <div class="form-group"><label>&nbsp;</label><button class="btn btn-success" onclick="showNewBatchForm()">＋ 新增批次</button></div>
+      <div class="form-group"><label>&nbsp;</label><button class="btn btn-danger btn-sm" onclick="deleteLossBatch()">刪除此批次</button></div>
+    </div>
+  </div>
+
+  <!-- New Batch Form (hidden by default) -->
+  <div class="card" id="loss-new-form" style="display:none;border-left:4px solid var(--green)">
+    <h2>＋ 建立新批次</h2>
+    <div class="form-row">
+      <div class="form-group"><label>產品名稱</label><input type="text" id="lb-product" value="DT-220-8620 內外倒角器大" style="width:280px"></div>
+      <div class="form-group"><label>批次編號</label><input type="text" id="lb-batchId" placeholder="例：1131205" style="width:140px"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>叫料日期</label><input type="text" id="lb-orderDate" placeholder="例：113/12/05" style="width:140px"></div>
+      <div class="form-group"><label>叫料 (kg)</label><input type="number" id="lb-materialKg" step="0.01" style="width:120px"></div>
+      <div class="form-group"><label>單隻重量 (kg)</label><input type="number" id="lb-unitWeight" value="0.695" step="0.001" style="width:120px"></div>
+      <div class="form-group"><label>鐵材單價 (元/kg)</label><input type="number" id="lb-unitPrice" step="0.1" style="width:120px"></div>
+    </div>
+    <div class="form-row">
+      <button class="btn btn-primary" onclick="createLossBatch()">建立批次</button>
+      <button class="btn btn-outline" onclick="document.getElementById('loss-new-form').style.display='none'">取消</button>
+    </div>
+  </div>
+
+  <!-- Batch Detail View -->
+  <div id="loss-detail" style="display:none">
+    <!-- Batch Header -->
+    <div class="card" id="loss-header"></div>
+
+    <!-- Stage Records -->
+    <div class="card">
+      <h2>📋 各階段紀錄</h2>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group"><label>階段</label>
+          <select id="lr-stage">
+            <option value="鍛造">鍛造</option><option value="車床">車床</option><option value="銑床">銑床</option>
+            <option value="熱處理">熱處理</option><option value="染黑">染黑</option><option value="成品">成品</option>
+          </select>
+        </div>
+        <div class="form-group"><label>廠商</label><input type="text" id="lr-vendor" style="width:100px"></div>
+        <div class="form-group"><label>日期</label><input type="text" id="lr-date" placeholder="114/01/15" style="width:110px"></div>
+        <div class="form-group"><label>動作</label>
+          <select id="lr-action">
+            <option value="收貨">收貨</option><option value="送出">送出</option><option value="鍛造完成">鍛造完成</option>
+            <option value="入庫">入庫</option><option value="出貨">出貨</option>
+          </select>
+        </div>
+        <div class="form-group"><label>出貨/鍛造量</label><input type="number" id="lr-outQty" style="width:100px"></div>
+        <div class="form-group"><label>進貨/回廠量</label><input type="number" id="lr-inQty" style="width:100px"></div>
+        <div class="form-group"><label>備註</label><input type="text" id="lr-note" style="width:160px"></div>
+        <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="addLossRecord()">新增</button></div>
+      </div>
+      <div id="loss-stages"></div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card">
+      <h2>📊 各階段產率對照</h2>
+      <div id="loss-summary"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ====== REPORT ====== -->
 <div id="panel-report" class="panel">
   <div class="card no-print">
@@ -272,13 +367,14 @@ tr:hover { background:var(--hover); }
     </div>
   </div>
   <div class="card">
-    <h2>📋 產品對照表 (計件)</h2>
+    <h2>📋 產品對照表 (計件) — 單價可修改</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:8px">修改單價後，新增的計件紀錄會使用新單價。已登記的紀錄不受影響（各紀錄保存當時的單價）。</p>
     <div class="filter-bar">
       <label>搜尋:</label><input type="text" id="prod-search" placeholder="輸入產編或加工方式..." oninput="filterProdTable()" style="width:240px">
     </div>
     <div class="table-scroll" style="max-height:400px">
       <table>
-        <thead><tr><th>ID</th><th>產編</th><th>加工方式</th><th class="num">單價</th></tr></thead>
+        <thead><tr><th>ID</th><th>產編</th><th>加工方式</th><th class="num">預設單價</th><th style="width:80px">修改</th></tr></thead>
         <tbody id="prod-tbody"></tbody>
       </table>
     </div>
@@ -326,6 +422,7 @@ function showPanel(name) {
   if (name==='piecework') renderPiecework();
   if (name==='inventory') renderInventory();
   if (name==='progress') renderProgress();
+  if (name==='loss') renderLossPanel();
   if (name==='data') renderDataPanel();
 }
 
@@ -338,41 +435,54 @@ function toast(msg) {
 
 // ====== DASHBOARD ======
 function renderDashboard() {
-  const recs = DB.workRecords;
+  // Build year selector
+  const allYears = new Set();
+  DB.workRecords.forEach(r=>{ if(r.d&&r.d.startsWith('20')) allYears.add(r.d.substring(0,4)); });
+  const yearsSorted = [...allYears].sort().reverse();
+  const yearSel = document.getElementById('dash-year');
+  const prevYear = yearSel.value;
+  if(yearSel.options.length===0) {
+    yearsSorted.forEach(y=>{ yearSel.add(new Option(y+'年', y)); });
+  }
+  const selYear = prevYear || yearsSorted[0] || '2016';
+  yearSel.value = selYear;
+
+  // Filter records by selected year
+  const recs = DB.workRecords.filter(r=>r.d&&r.d.startsWith(selYear));
   const totalQty = recs.reduce((s,r)=>s+(parseInt(r.q)||0),0);
   const totalAmt = recs.reduce((s,r)=>{
-    const p = prodInfo(r.pi);
-    return s + (parseInt(r.q)||0) * (parseFloat(p.price)||0);
+    return s + (parseInt(r.q)||0) * recPrice(r);
   },0);
   
   document.getElementById('dashStats').innerHTML = `
-    <div class="stat-card"><div class="value">${recs.length.toLocaleString()}</div><div class="label">計件紀錄數</div></div>
-    <div class="stat-card green"><div class="value">${totalQty.toLocaleString()}</div><div class="label">總加工數量</div></div>
-    <div class="stat-card amber"><div class="value">$${Math.round(totalAmt).toLocaleString()}</div><div class="label">總計件金額</div></div>
+    <div class="stat-card"><div class="value">${recs.length.toLocaleString()}</div><div class="label">${selYear}年 紀錄數</div></div>
+    <div class="stat-card green"><div class="value">${totalQty.toLocaleString()}</div><div class="label">${selYear}年 加工數量</div></div>
+    <div class="stat-card amber"><div class="value">$${Math.round(totalAmt).toLocaleString()}</div><div class="label">${selYear}年 計件金額</div></div>
     <div class="stat-card purple"><div class="value">${DB.invProducts.length}</div><div class="label">庫存產品數</div></div>
   `;
-  document.getElementById('recordCount').textContent = recs.length.toLocaleString();
+  document.getElementById('recordCount').textContent = DB.workRecords.length.toLocaleString();
 
   // Monthly chart
   const monthly = {};
   recs.forEach(r=>{
-    if(!r.d||!r.d.startsWith('20'))return;
     const ym = r.d.substring(0,7);
     monthly[ym] = (monthly[ym]||0) + (parseInt(r.q)||0);
   });
   const yms = Object.keys(monthly).sort();
-  const maxQ = Math.max(...Object.values(monthly));
+  const maxQ = Math.max(...Object.values(monthly), 1);
   let chartHtml = '';
   yms.forEach(ym=>{
     const pct = (monthly[ym]/maxQ*100).toFixed(0);
-    chartHtml += `<div class="chart-bar"><div class="bar-label">${ym}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${monthly[ym].toLocaleString()}</div></div></div>`;
+    const label = parseInt(ym.split('-')[1])+'月';
+    chartHtml += `<div class="chart-bar"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${monthly[ym].toLocaleString()}</div></div></div>`;
   });
+  if(!chartHtml) chartHtml = '<div class="empty-msg">該年度無資料</div>';
   document.getElementById('monthlyChart').innerHTML = chartHtml;
 
-  // Employee chart
+  // Employee chart - also filtered by year
   const empQty = {};
   recs.forEach(r=>{ empQty[r.ei]=(empQty[r.ei]||0)+(parseInt(r.q)||0); });
-  const empMax = Math.max(...Object.values(empQty));
+  const empMax = Math.max(...Object.values(empQty), 1);
   let empHtml = '';
   const colors = ['var(--accent)','var(--green)','var(--purple)','var(--amber)'];
   let ci = 0;
@@ -381,20 +491,27 @@ function renderDashboard() {
     empHtml += `<div class="chart-bar"><div class="bar-label">${empName(eid)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[ci%4]}">${qty.toLocaleString()}</div></div></div>`;
     ci++;
   });
+  if(!empHtml) empHtml = '<div class="empty-msg">該年度無資料</div>';
   document.getElementById('empChart').innerHTML = empHtml;
 
-  // Inventory summary
-  let invHtml = '<table><thead><tr><th>產品</th><th class="num">最新庫存</th><th>備註</th></tr></thead><tbody>';
-  const latestInv = {};
+  // Inventory summary - group by product+lot
+  const invGroups = {};
   DB.invRecords.forEach(r=>{
-    if(parseInt(r.stock)) latestInv[r.prodId] = r;
+    const lot = r.lot || '(無批號)';
+    const key = r.prodId + '||' + lot;
+    if(!invGroups[key]) invGroups[key] = { prodId:r.prodId, lot:lot, totalIn:0, totalOut:0, defects:0 };
+    invGroups[key].totalIn += parseInt(r.inQty)||0;
+    invGroups[key].totalOut += parseInt(r.outQty)||0;
+    invGroups[key].defects += parseInt(r.defect)||0;
   });
-  Object.values(latestInv).slice(0,10).forEach(r=>{
-    const p = invProdInfo(r.prodId);
-    const stock = parseInt(r.stock)||0;
-    const cls = stock<50?'badge-red':stock<200?'badge-amber':'badge-green';
-    invHtml += `<tr><td>${p.code||p.name}</td><td class="num"><span class="badge ${cls}">${stock.toLocaleString()}</span></td><td>${r.note||''}</td></tr>`;
+  let invHtml = '<table><thead><tr><th>產品</th><th>批號</th><th class="num">庫存</th></tr></thead><tbody>';
+  const invItems = Object.values(invGroups).map(g=>({...g, stock:g.totalIn-g.totalOut-g.defects})).filter(g=>g.stock>0).sort((a,b)=>b.stock-a.stock).slice(0,12);
+  invItems.forEach(g=>{
+    const p = invProdInfo(g.prodId);
+    const cls = g.stock<50?'badge-red':g.stock<200?'badge-amber':'badge-green';
+    invHtml += `<tr><td>${p.code||p.name}</td><td style="font-size:11px">${g.lot}</td><td class="num"><span class="badge ${cls}">${g.stock.toLocaleString()}</span></td></tr>`;
   });
+  if(!invItems.length) invHtml += '<tr><td colspan="3" class="empty-msg">無庫存資料</td></tr>';
   invHtml += '</tbody></table>';
   document.getElementById('invSummary').innerHTML = invHtml;
 }
@@ -410,12 +527,34 @@ function renderPiecework() {
   }
   const prodSel = document.getElementById('pw-prod');
   if(prodSel.options.length<=1) {
-    DB.products.forEach(p=>{ prodSel.add(new Option(`${p.code} [${p.method}] $${p.price}`, p.id)); });
+    DB.products.forEach(p=>{ prodSel.add(new Option(`${p.code} [${p.method}]`, p.id)); });
   }
   if(!document.getElementById('pw-date').value) {
     document.getElementById('pw-date').value = new Date().toISOString().slice(0,10);
   }
+  onProdChange();
   filterWork();
+}
+
+function onProdChange() {
+  const prodSel = document.getElementById('pw-prod');
+  const priceInput = document.getElementById('pw-price');
+  const hint = document.getElementById('pw-price-hint');
+  if(prodSel.value) {
+    const p = prodInfo(prodSel.value);
+    priceInput.value = p.price;
+    hint.innerHTML = `產品預設單價: <b>$${p.price}</b>（可直接修改單價欄位）`;
+  } else {
+    priceInput.value = '';
+    hint.innerHTML = '';
+  }
+}
+
+// Get the effective price for a work record
+function recPrice(r) {
+  // If record has its own price stored, use it; otherwise fall back to product master
+  if(r.pr !== undefined && r.pr !== '') return parseFloat(r.pr)||0;
+  return parseFloat(prodInfo(r.pi).price)||0;
 }
 
 function filterWork() {
@@ -437,29 +576,117 @@ function filterWork() {
   filtered.sort((a,b)=>b.d.localeCompare(a.d));
   
   let totalQty=0, totalAmt=0;
-  filtered.forEach(r=>{ totalQty+=parseInt(r.q)||0; totalAmt+=(parseInt(r.q)||0)*(parseFloat(prodInfo(r.pi).price)||0); });
+  filtered.forEach(r=>{ 
+    const qty = parseInt(r.q)||0;
+    totalQty += qty; 
+    totalAmt += qty * recPrice(r); 
+  });
   
   document.getElementById('pw-summary').innerHTML = `<span style="color:var(--text2);font-size:13px">共 <b>${filtered.length.toLocaleString()}</b> 筆 | 總數量: <b>${totalQty.toLocaleString()}</b> | 總金額: <b>$${Math.round(totalAmt).toLocaleString()}</b></span>`;
   
   const tbody = document.getElementById('pw-tbody');
-  const show = filtered.slice(0,500); // limit for performance
+  const show = filtered.slice(0,500);
   tbody.innerHTML = show.map(r=>{
     const p = prodInfo(r.pi);
-    const amt = (parseInt(r.q)||0)*(parseFloat(p.price)||0);
-    return `<tr><td>${r.d}</td><td>${empName(r.ei)}</td><td>${p.code}</td><td>${p.method}</td><td class="num">${p.price}</td><td class="num">${parseInt(r.q).toLocaleString()}</td><td class="num">$${Math.round(amt).toLocaleString()}</td><td class="num">${r.sq||''}</td></tr>`;
+    const price = recPrice(r);
+    const masterPrice = parseFloat(p.price)||0;
+    const priceChanged = r.pr !== undefined && r.pr !== '' && Math.abs(price - masterPrice) > 0.001;
+    const amt = (parseInt(r.q)||0) * price;
+    return `<tr><td>${r.d}</td><td>${empName(r.ei)}</td><td>${p.code}</td><td>${p.method}</td><td class="num">${priceChanged?'<span style="color:var(--amber)" title="此筆單價與目前產品預設不同">'+price.toFixed(2)+'*</span>':price.toFixed(2)}</td><td class="num">${parseInt(r.q).toLocaleString()}</td><td class="num">$${Math.round(amt).toLocaleString()}</td><td class="num">${r.sq||''}</td></tr>`;
   }).join('');
   if(filtered.length>500) tbody.innerHTML += `<tr><td colspan="8" style="text-align:center;color:var(--text2)">僅顯示前 500 筆，請用篩選縮小範圍</td></tr>`;
+
+  // ====== Employee Monthly Salary Summary ======
+  renderSalarySummary(month);
+}
+
+function renderSalarySummary(month) {
+  const salaryDiv = document.getElementById('pw-salary');
+  if(!month) {
+    salaryDiv.innerHTML = '<div class="empty-msg">請先選擇月份以查看薪資彙總</div>';
+    return;
+  }
+  const [y,m] = month.split('-');
+  const monthLabel = `${y}年${parseInt(m)}月`;
+
+  // Get all records for this month (ignore employee/product filter)
+  const monthRecs = DB.workRecords.filter(r=>r.d&&r.d.startsWith(month));
+
+  // Build per-employee, per-product breakdown
+  const empData = {};
+  monthRecs.forEach(r=>{
+    const eid = r.ei;
+    if(!empData[eid]) empData[eid] = { qty:0, amt:0, days:new Set(), products:{} };
+    const qty = parseInt(r.q)||0;
+    const price = recPrice(r);
+    const amt = qty * price;
+    empData[eid].qty += qty;
+    empData[eid].amt += amt;
+    empData[eid].days.add(r.d);
+    const p = prodInfo(r.pi);
+    const pkey = r.pi + '_' + price.toFixed(2); // separate by price too
+    if(!empData[eid].products[pkey]) empData[eid].products[pkey] = {code:p.code, method:p.method, price:price, qty:0, amt:0};
+    empData[eid].products[pkey].qty += qty;
+    empData[eid].products[pkey].amt += amt;
+  });
+
+  if(Object.keys(empData).length === 0) {
+    salaryDiv.innerHTML = `<div class="empty-msg">${monthLabel} 無計件紀錄</div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:15px;font-weight:600;color:var(--accent2);margin-bottom:12px">${monthLabel} 員工計件薪資</div>`;
+
+  // Grand total summary cards
+  let grandQty=0, grandAmt=0;
+  Object.values(empData).forEach(d=>{ grandQty+=d.qty; grandAmt+=d.amt; });
+  html += `<div class="stat-grid" style="margin-bottom:16px">
+    <div class="stat-card"><div class="value">${Object.keys(empData).length}</div><div class="label">出勤人數</div></div>
+    <div class="stat-card green"><div class="value">${grandQty.toLocaleString()}</div><div class="label">總數量</div></div>
+    <div class="stat-card amber"><div class="value">$${Math.round(grandAmt).toLocaleString()}</div><div class="label">總計件薪資</div></div>
+  </div>`;
+
+  // Per-employee detail
+  Object.entries(empData).sort((a,b)=>b[1].amt-a[1].amt).forEach(([eid, data])=>{
+    const days = data.days.size;
+    const avgPerDay = Math.round(data.qty / Math.max(days,1));
+    html += `<div style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#1a3a52,#2a6090);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <strong style="font-size:16px">${empName(eid)}</strong>
+          <span style="opacity:0.7;font-size:13px;margin-left:8px">${days} 天出勤 / 日均 ${avgPerDay.toLocaleString()} 件</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;opacity:0.7">總數量 ${data.qty.toLocaleString()}</div>
+          <div style="font-size:20px;font-weight:700">$${Math.round(data.amt).toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="padding:0">
+        <table style="margin:0"><thead><tr><th>產編</th><th>加工方式</th><th class="num">單價</th><th class="num">數量</th><th class="num">金額</th></tr></thead><tbody>`;
+    
+    // Sort products by amount desc
+    const prods = Object.values(data.products).sort((a,b)=>b.amt-a.amt);
+    prods.forEach(pd=>{
+      html += `<tr><td>${pd.code}</td><td>${pd.method}</td><td class="num">$${pd.price.toFixed(2)}</td><td class="num">${pd.qty.toLocaleString()}</td><td class="num">$${Math.round(pd.amt).toLocaleString()}</td></tr>`;
+    });
+    html += `<tr style="font-weight:700;background:#e8e4db"><td colspan="3">小計</td><td class="num">${data.qty.toLocaleString()}</td><td class="num">$${Math.round(data.amt).toLocaleString()}</td></tr>`;
+    html += `</tbody></table></div></div>`;
+  });
+
+  salaryDiv.innerHTML = html;
 }
 
 function addWorkRecord() {
   const date = document.getElementById('pw-date').value;
   const emp = document.getElementById('pw-emp').value;
   const prod = document.getElementById('pw-prod').value;
+  const price = document.getElementById('pw-price').value;
   const qty = document.getElementById('pw-qty').value;
   const shipQty = document.getElementById('pw-shipqty').value;
   if(!date||!emp||!prod||!qty) { toast('請填寫完整資料'); return; }
+  if(!price && price!=='0') { toast('請填寫單價'); return; }
   const maxSeq = DB.workRecords.reduce((m,r)=>Math.max(m,parseInt(r.s)||0),0);
-  DB.workRecords.push({s:''+(maxSeq+1), q:qty, d:date, sq:shipQty||'', pi:prod, ei:emp});
+  DB.workRecords.push({s:''+(maxSeq+1), q:qty, d:date, sq:shipQty||'', pi:prod, ei:emp, pr:price});
   saveDB();
   toast('已新增計件紀錄');
   document.getElementById('pw-qty').value='';
@@ -480,42 +707,116 @@ function renderInventory() {
   if(!document.getElementById('inv-date').value) {
     document.getElementById('inv-date').value = new Date().toISOString().slice(0,10);
   }
+  // Populate lot filter dropdown
+  const lotSel = document.getElementById('inv-filter-lot');
+  const prevLot = lotSel.value;
+  lotSel.innerHTML = '<option value="">全部批號</option>';
+  const lots = new Set();
+  DB.invRecords.forEach(r=>{ if(r.lot) lots.add(r.lot); });
+  [...lots].sort().forEach(l=>{ lotSel.add(new Option(l, l)); });
+  lotSel.value = prevLot;
+  
+  renderLotSummary();
   filterInv();
+}
+
+function renderLotSummary() {
+  const q = (document.getElementById('inv-lot-filter').value||'').toLowerCase();
+  // Group by product+lot
+  const groups = {};
+  DB.invRecords.forEach(r=>{
+    const p = invProdInfo(r.prodId);
+    const lot = r.lot || '(無批號)';
+    const key = r.prodId + '||' + lot;
+    const searchStr = (p.code+' '+p.name+' '+lot).toLowerCase();
+    if(q && !searchStr.includes(q)) return;
+    if(!groups[key]) groups[key] = { prodId:r.prodId, code:p.code, name:p.name, lot:lot, totalIn:0, totalOut:0, defects:0, records:0 };
+    groups[key].totalIn += parseInt(r.inQty)||0;
+    groups[key].totalOut += parseInt(r.outQty)||0;
+    groups[key].defects += parseInt(r.defect)||0;
+    groups[key].records++;
+  });
+
+  const items = Object.values(groups);
+  if(items.length === 0) {
+    document.getElementById('inv-lot-summary').innerHTML = '<div class="empty-msg">無符合條件的資料</div>';
+    return;
+  }
+
+  items.sort((a,b)=>(a.code+a.lot).localeCompare(b.code+b.lot));
+  let html = '<div class="table-scroll" style="max-height:350px"><table><thead><tr><th>產品編號</th><th>產品名稱</th><th>批號</th><th class="num">總進貨</th><th class="num">總銷貨</th><th class="num">不良品</th><th class="num">現有庫存</th><th class="num">異動筆數</th></tr></thead><tbody>';
+  items.forEach(g=>{
+    const stock = g.totalIn - g.totalOut - g.defects;
+    const cls = stock<=0?'badge-red':stock<50?'badge-amber':'badge-green';
+    html += `<tr>
+      <td>${g.code}</td><td>${g.name}</td>
+      <td><span style="background:#e8f2fa;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${g.lot}</span></td>
+      <td class="num">${g.totalIn.toLocaleString()}</td>
+      <td class="num">${g.totalOut.toLocaleString()}</td>
+      <td class="num" style="color:${g.defects?'var(--red)':''}">${g.defects||''}</td>
+      <td class="num"><span class="badge ${cls}">${stock.toLocaleString()}</span></td>
+      <td class="num">${g.records}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('inv-lot-summary').innerHTML = html;
 }
 
 function filterInv() {
   const q = (document.getElementById('inv-filter').value||'').toLowerCase();
+  const lotFilter = document.getElementById('inv-filter-lot').value;
   let filtered = DB.invRecords;
   if(q) {
     filtered = filtered.filter(r=>{
       const p = invProdInfo(r.prodId);
-      return (p.code+' '+p.name).toLowerCase().includes(q);
+      return (p.code+' '+p.name+' '+(r.lot||'')+' '+(r.note||'')).toLowerCase().includes(q);
     });
+  }
+  if(lotFilter) {
+    filtered = filtered.filter(r=>(r.lot||'')=== lotFilter);
   }
   const tbody = document.getElementById('inv-tbody');
   tbody.innerHTML = filtered.map(r=>{
     const p = invProdInfo(r.prodId);
-    return `<tr><td>${r.seq}</td><td title="${p.code}">${p.name||p.code}</td><td>${custName(r.custId)}</td><td class="num">${r.inQty||''}</td><td class="num">${r.outQty||''}</td><td class="num" style="font-weight:600">${r.stock||''}</td><td>${r.inDate||''}</td><td>${r.outDate||''}</td><td>${r.note||''}</td></tr>`;
+    const date = r.inDate || r.outDate || '';
+    return `<tr><td>${r.seq}</td><td title="${p.code}">${p.name||p.code}</td><td>${r.lot?'<span style="background:#e8f2fa;color:var(--accent);padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600">'+r.lot+'</span>':''}</td><td>${custName(r.custId)}</td><td class="num">${r.inQty||''}</td><td class="num">${r.outQty||''}</td><td class="num" style="color:${r.defect?'var(--red)':''}">${r.defect||''}</td><td class="num" style="font-weight:600">${r.stock||''}</td><td>${date}</td><td>${r.note||''}</td></tr>`;
   }).join('');
 }
 
 function addInvRecord() {
   const prod = document.getElementById('inv-prod').value;
+  const lot = document.getElementById('inv-lot').value.trim();
   const cust = document.getElementById('inv-cust').value;
   const inQty = document.getElementById('inv-in').value;
   const outQty = document.getElementById('inv-out').value;
+  const defect = document.getElementById('inv-defect').value;
   const date = document.getElementById('inv-date').value;
   const note = document.getElementById('inv-note').value;
   if(!prod) { toast('請選擇產品'); return; }
+  if(!inQty && !outQty && !defect) { toast('請填寫進貨、銷貨或不良品數量'); return; }
+
+  // Calculate running stock for this product+lot
+  const matchRecs = DB.invRecords.filter(r=>r.prodId===prod && (r.lot||'')===(lot||''));
+  let prevStock = 0;
+  if(matchRecs.length > 0) {
+    // Sum up: inQty - outQty - defect for all matching records
+    matchRecs.forEach(r=>{
+      prevStock += (parseInt(r.inQty)||0) - (parseInt(r.outQty)||0) - (parseInt(r.defect)||0);
+    });
+  }
+  const newStock = prevStock + (parseInt(inQty)||0) - (parseInt(outQty)||0) - (parseInt(defect)||0);
+
   const maxSeq = DB.invRecords.reduce((m,r)=>Math.max(m,parseInt(r.seq)||0),0);
   DB.invRecords.push({
-    stock:'', prev:'', inQty:inQty||'', inDate:inQty?date:'', chkDate:'',
-    outDate:outQty?date:'', outQty:outQty||'', defect:'', short:'',
-    note:note, custId:cust, suppId:'', prodId:prod, seq:''+(maxSeq+1)
+    stock:''+newStock, prev:''+prevStock, inQty:inQty||'', inDate:inQty?date:'', chkDate:'',
+    outDate:outQty?date:'', outQty:outQty||'', defect:defect||'', short:'',
+    note:note, custId:cust, suppId:'', prodId:prod, seq:''+(maxSeq+1), lot:lot||''
   });
   saveDB();
-  toast('已新增庫存異動');
-  filterInv();
+  toast('已新增庫存異動'+(lot?' (批號:'+lot+')':''));
+  // Clear inputs
+  ['inv-in','inv-out','inv-defect','inv-note'].forEach(id=>document.getElementById(id).value='');
+  renderInventory();
 }
 
 // ====== PROGRESS ======
@@ -553,7 +854,277 @@ function updateProgress() {
   renderProgress();
 }
 
+// ====== LOSS TRACKING ======
+const LOSS_STAGES = ['鍛造','車床','銑床','熱處理','染黑','成品'];
+const STAGE_COLORS = {'鍛造':'var(--amber)','車床':'var(--accent)','銑床':'var(--purple)','熱處理':'var(--red)','染黑':'var(--text)','成品':'var(--green)'};
+
+function initLossData() {
+  if(!DB.lossBatches) DB.lossBatches = [];
+}
+
+function renderLossPanel() {
+  initLossData();
+  // Populate product dropdown (unique product names)
+  const prodSel = document.getElementById('loss-product');
+  const prevProd = prodSel.value;
+  prodSel.innerHTML = '<option value="">-- 全部產品 --</option>';
+  const products = [...new Set(DB.lossBatches.map(b=>b.product))].sort();
+  products.forEach(p=>{ prodSel.add(new Option(p, p)); });
+  if(prevProd) prodSel.value = prevProd;
+  
+  filterLossBatches();
+}
+
+function filterLossBatches() {
+  initLossData();
+  const prodFilter = document.getElementById('loss-product').value;
+  const sel = document.getElementById('loss-batch');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">-- 請選擇 --</option>';
+  DB.lossBatches.forEach((b,i)=>{
+    if(prodFilter && b.product !== prodFilter) return;
+    sel.add(new Option(b.batchId, i));
+  });
+  // Try to restore previous selection
+  if(prev) sel.value = prev;
+  if(!sel.value && sel.options.length===2) sel.selectedIndex = 1; // auto-select if only one batch
+  renderLossBatch();
+}
+
+function showNewBatchForm() {
+  document.getElementById('loss-new-form').style.display = 'block';
+  document.getElementById('lb-batchId').focus();
+}
+
+function createLossBatch() {
+  const product = document.getElementById('lb-product').value.trim();
+  const batchId = document.getElementById('lb-batchId').value.trim();
+  const orderDate = document.getElementById('lb-orderDate').value.trim();
+  const materialKg = parseFloat(document.getElementById('lb-materialKg').value) || 0;
+  const unitWeight = parseFloat(document.getElementById('lb-unitWeight').value) || 0.695;
+  const unitPrice = parseFloat(document.getElementById('lb-unitPrice').value) || 0;
+  if(!batchId) { toast('請填寫批次編號'); return; }
+  if(!materialKg) { toast('請填寫叫料公斤數'); return; }
+  initLossData();
+  DB.lossBatches.push({
+    product, batchId, orderDate, materialKg, unitWeight, unitPrice,
+    theoreticalQty: Math.floor(materialKg / unitWeight),
+    materialCost: materialKg * unitPrice,
+    records: []
+  });
+  saveDB();
+  document.getElementById('loss-new-form').style.display = 'none';
+  // Select the newly created product and batch
+  renderLossPanel();
+  document.getElementById('loss-product').value = product;
+  filterLossBatches();
+  document.getElementById('loss-batch').value = DB.lossBatches.length - 1;
+  renderLossBatch();
+  toast('批次已建立');
+}
+
+function deleteLossBatch() {
+  const idx = document.getElementById('loss-batch').value;
+  if(idx === '') return;
+  const b = DB.lossBatches[idx];
+  if(!confirm(`確定要刪除批次「${b.batchId}」嗎？此操作無法復原。`)) return;
+  DB.lossBatches.splice(idx, 1);
+  saveDB();
+  renderLossPanel();
+  toast('批次已刪除');
+}
+
+function renderLossBatch() {
+  initLossData();
+  const idx = document.getElementById('loss-batch').value;
+  const detail = document.getElementById('loss-detail');
+  if(idx === '' || !DB.lossBatches[idx]) { detail.style.display = 'none'; return; }
+  detail.style.display = 'block';
+  const b = DB.lossBatches[idx];
+
+  // Header
+  document.getElementById('loss-header').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="display:inline">${b.product}</h2>
+        <span style="font-size:14px;color:var(--text2);margin-left:8px">批次 ${b.batchId}</span>
+      </div>
+    </div>
+    <div class="stat-grid" style="margin-top:12px">
+      <div class="stat-card"><div class="value">${b.orderDate||'—'}</div><div class="label">叫料日期</div></div>
+      <div class="stat-card"><div class="value">${b.materialKg.toLocaleString()}<span style="font-size:14px"> kg</span></div><div class="label">叫料重量</div></div>
+      <div class="stat-card green"><div class="value">${b.theoreticalQty.toLocaleString()}<span style="font-size:14px"> 隻</span></div><div class="label">理論可鍛隻數</div></div>
+      <div class="stat-card amber"><div class="value">$${Math.round(b.materialCost).toLocaleString()}</div><div class="label">材料費</div></div>
+    </div>`;
+
+  // Stage records
+  let stagesHtml = '';
+  LOSS_STAGES.forEach(stage=>{
+    const stageRecs = b.records.filter(r=>r.stage===stage);
+    const totalOut = stageRecs.reduce((s,r)=>s+(parseInt(r.outQty)||0),0);
+    const totalIn = stageRecs.reduce((s,r)=>s+(parseInt(r.inQty)||0),0);
+
+    stagesHtml += `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${STAGE_COLORS[stage]||'var(--text2)'}"></span>
+        <strong style="font-size:14px">${stage}</strong>
+        <span style="font-size:12px;color:var(--text2)">（出貨: ${totalOut.toLocaleString()} / 進貨: ${totalIn.toLocaleString()}）</span>
+      </div>`;
+    if(stageRecs.length) {
+      stagesHtml += `<div class="table-scroll" style="max-height:200px"><table>
+        <thead><tr><th style="width:30px">序</th><th>廠商</th><th>日期</th><th>動作</th><th class="num">出貨量</th><th class="num">進貨量</th><th class="num">階段庫存</th><th>備註</th><th style="width:40px"></th></tr></thead><tbody>`;
+      stageRecs.forEach((r,ri)=>{
+        stagesHtml += `<tr><td>${ri+1}</td><td>${r.vendor||''}</td><td>${r.date||''}</td><td>${r.action||''}</td><td class="num">${r.outQty||''}</td><td class="num">${r.inQty||''}</td><td class="num" style="font-weight:600">${r.stock||''}</td><td>${r.note||''}</td><td><button class="btn btn-danger btn-sm" onclick="deleteLossRecord(${idx},${b.records.indexOf(r)})">✕</button></td></tr>`;
+      });
+      stagesHtml += '</tbody></table></div>';
+    } else {
+      stagesHtml += '<div style="font-size:12px;color:var(--text2);padding:4px 16px">尚無紀錄</div>';
+    }
+    stagesHtml += '</div>';
+  });
+  document.getElementById('loss-stages').innerHTML = stagesHtml;
+
+  // Summary
+  renderLossSummary(b);
+}
+
+function renderLossSummary(b) {
+  const theory = b.theoreticalQty;
+  let prevOutput = theory;
+  let summaryRows = {input:[],output:[],loss:[],stageRate:[],accumRate:[]};
+  
+  LOSS_STAGES.forEach(stage=>{
+    const stageRecs = b.records.filter(r=>r.stage===stage);
+    const totalOut = stageRecs.reduce((s,r)=>s+(parseInt(r.outQty)||0),0);
+    const totalIn = stageRecs.reduce((s,r)=>s+(parseInt(r.inQty)||0),0);
+    const input = stage==='鍛造' ? theory : prevOutput;
+    const output = stage==='鍛造' ? totalOut : totalIn || totalOut;
+    const loss = input - output;
+    const stageRate = input>0 ? (loss/input*100) : 0;
+    const accumRate = theory>0 ? (output/theory*100) : 0;
+    
+    summaryRows.input.push(input);
+    summaryRows.output.push(output);
+    summaryRows.loss.push(loss);
+    summaryRows.stageRate.push(stageRate);
+    summaryRows.accumRate.push(accumRate);
+    
+    if(totalOut>0 || totalIn>0) prevOutput = totalOut || totalIn;
+  });
+
+  // Bar chart visualization
+  let barHtml = '<div style="margin-bottom:16px">';
+  LOSS_STAGES.forEach((stage,i)=>{
+    const pct = theory>0 ? (summaryRows.output[i]/theory*100) : 0;
+    const color = STAGE_COLORS[stage] || 'var(--text2)';
+    barHtml += `<div class="chart-bar"><div class="bar-label">${stage}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,2)}%;background:${color}">${summaryRows.output[i]>0?summaryRows.output[i].toLocaleString():''}</div></div><div style="min-width:50px;font-size:12px;color:var(--text2);text-align:right">${pct.toFixed(1)}%</div></div>`;
+  });
+  barHtml += '</div>';
+
+  // Summary table
+  let tableHtml = `<table><thead><tr><th></th>${LOSS_STAGES.map(s=>`<th class="num">${s}</th>`).join('')}</tr></thead><tbody>
+    <tr><td style="font-weight:600">投入量</td>${summaryRows.input.map(v=>`<td class="num">${v?v.toLocaleString():'-'}</td>`).join('')}</tr>
+    <tr><td style="font-weight:600">產出量</td>${summaryRows.output.map(v=>`<td class="num">${v?v.toLocaleString():'-'}</td>`).join('')}</tr>
+    <tr><td style="font-weight:600">耗損量</td>${summaryRows.loss.map(v=>`<td class="num" style="color:${v>0?'var(--red)':'var(--green)'}">${v?v.toLocaleString():'-'}</td>`).join('')}</tr>
+    <tr><td style="font-weight:600">階段耗損率</td>${summaryRows.stageRate.map(v=>`<td class="num">${v?v.toFixed(2)+'%':'-'}</td>`).join('')}</tr>
+    <tr style="background:#e8f2fa"><td style="font-weight:600">累計產率</td>${summaryRows.accumRate.map(v=>`<td class="num" style="font-weight:600">${v?v.toFixed(2)+'%':'-'}</td>`).join('')}</tr>
+  </tbody></table>`;
+
+  // Batch total
+  const finalOutput = summaryRows.output[LOSS_STAGES.length-1];
+  const totalLossRate = theory>0 ? ((theory-finalOutput)/theory*100) : 0;
+  const totalYieldRate = theory>0 ? (finalOutput/theory*100) : 0;
+  let totalHtml = '';
+  if(finalOutput>0) {
+    totalHtml = `<div style="margin-top:16px;padding:12px 16px;background:var(--bg);border-radius:6px;display:flex;gap:24px;flex-wrap:wrap">
+      <div><span style="font-size:13px;color:var(--text2)">理論隻數</span> <strong>${theory.toLocaleString()}</strong></div>
+      <div><span style="font-size:13px;color:var(--text2)">成品入庫</span> <strong style="color:var(--green)">${finalOutput.toLocaleString()}</strong></div>
+      <div><span style="font-size:13px;color:var(--text2)">總耗損率</span> <strong style="color:var(--red)">${totalLossRate.toFixed(2)}%</strong></div>
+      <div><span style="font-size:13px;color:var(--text2)">最終產率</span> <strong style="color:var(--green)">${totalYieldRate.toFixed(2)}%</strong></div>
+    </div>`;
+  }
+
+  document.getElementById('loss-summary').innerHTML = barHtml + tableHtml + totalHtml;
+}
+
+function addLossRecord() {
+  const idx = document.getElementById('loss-batch').value;
+  if(idx === '') { toast('請先選擇批次'); return; }
+  const b = DB.lossBatches[idx];
+  const stage = document.getElementById('lr-stage').value;
+  const vendor = document.getElementById('lr-vendor').value.trim();
+  const date = document.getElementById('lr-date').value.trim();
+  const action = document.getElementById('lr-action').value;
+  const outQty = document.getElementById('lr-outQty').value;
+  const inQty = document.getElementById('lr-inQty').value;
+  const note = document.getElementById('lr-note').value.trim();
+  if(!date && !outQty && !inQty) { toast('請至少填寫日期和數量'); return; }
+
+  // Calculate stock: running total for this stage
+  const stageRecs = b.records.filter(r=>r.stage===stage);
+  let prevStock = stageRecs.length>0 ? (parseInt(stageRecs[stageRecs.length-1].stock)||0) : 0;
+  let stock = prevStock + (parseInt(inQty)||0) - (parseInt(outQty)||0);
+
+  b.records.push({ stage, vendor, date, action, outQty: outQty||'', inQty: inQty||'', stock: stock>0?''+stock:'', note });
+  saveDB();
+  // Clear inputs
+  ['lr-outQty','lr-inQty','lr-note','lr-date'].forEach(id=>document.getElementById(id).value='');
+  renderLossBatch();
+  toast('紀錄已新增');
+}
+
+function deleteLossRecord(batchIdx, recIdx) {
+  if(!confirm('確定刪除此筆紀錄？')) return;
+  const b = DB.lossBatches[batchIdx];
+  b.records.splice(recIdx, 1);
+  // Recalculate stock for affected stage
+  recalcStageStock(b);
+  saveDB();
+  renderLossBatch();
+  toast('紀錄已刪除');
+}
+
+function recalcStageStock(batch) {
+  LOSS_STAGES.forEach(stage=>{
+    let stock = 0;
+    batch.records.filter(r=>r.stage===stage).forEach(r=>{
+      stock += (parseInt(r.inQty)||0) - (parseInt(r.outQty)||0);
+      r.stock = stock > 0 ? ''+stock : '';
+    });
+  });
+}
+
 // ====== REPORT ======
+function buildLossReportHtml() {
+  initLossData();
+  if(!DB.lossBatches || DB.lossBatches.length===0) return '<div class="empty-msg">尚無耗損追蹤批次</div>';
+  let html = '';
+  DB.lossBatches.forEach(b=>{
+    const theory = b.theoreticalQty;
+    let prevOutput = theory;
+    html += `<h3 style="margin-top:12px">${b.product} — 批次 ${b.batchId}（叫料 ${b.materialKg}kg / 理論 ${theory.toLocaleString()} 隻）</h3>`;
+    html += `<table><thead><tr><th></th>${LOSS_STAGES.map(s=>'<th class="num">'+s+'</th>').join('')}</tr></thead><tbody>`;
+    let inputs=[],outputs=[],losses=[],rates=[];
+    LOSS_STAGES.forEach(stage=>{
+      const recs = b.records.filter(r=>r.stage===stage);
+      const totalOut = recs.reduce((s,r)=>s+(parseInt(r.outQty)||0),0);
+      const totalIn = recs.reduce((s,r)=>s+(parseInt(r.inQty)||0),0);
+      const input = stage==='鍛造'?theory:prevOutput;
+      const output = stage==='鍛造'?totalOut:(totalIn||totalOut);
+      inputs.push(input); outputs.push(output);
+      losses.push(input-output);
+      rates.push(theory>0?(output/theory*100):0);
+      if(totalOut>0||totalIn>0) prevOutput = totalOut||totalIn;
+    });
+    html += `<tr><td><b>投入</b></td>${inputs.map(v=>'<td class="num">'+(v?v.toLocaleString():'-')+'</td>').join('')}</tr>`;
+    html += `<tr><td><b>產出</b></td>${outputs.map(v=>'<td class="num">'+(v?v.toLocaleString():'-')+'</td>').join('')}</tr>`;
+    html += `<tr><td><b>耗損</b></td>${losses.map(v=>'<td class="num" style="color:'+(v>0?'var(--red)':'var(--green)')+'">'+(v?v.toLocaleString():'-')+'</td>').join('')}</tr>`;
+    html += `<tr style="background:#e8f2fa"><td><b>累計產率</b></td>${rates.map(v=>'<td class="num"><b>'+(v?v.toFixed(1)+'%':'-')+'</b></td>').join('')}</tr>`;
+    html += '</tbody></table>';
+  });
+  return html;
+}
+
 function generateReport() {
   const month = document.getElementById('rpt-month').value;
   if(!month) { toast('請選擇月份'); return; }
@@ -567,9 +1138,8 @@ function generateReport() {
     const eid = r.ei;
     if(!empSummary[eid]) empSummary[eid] = {qty:0,amt:0,days:new Set()};
     const qty = parseInt(r.q)||0;
-    const p = prodInfo(r.pi);
     empSummary[eid].qty += qty;
-    empSummary[eid].amt += qty*(parseFloat(p.price)||0);
+    empSummary[eid].amt += qty * recPrice(r);
     empSummary[eid].days.add(r.d);
   });
   
@@ -590,7 +1160,7 @@ function generateReport() {
     if(!prodSummary[pid]) prodSummary[pid]={qty:0,amt:0};
     const qty = parseInt(r.q)||0;
     prodSummary[pid].qty += qty;
-    prodSummary[pid].amt += qty*(parseFloat(prodInfo(pid).price)||0);
+    prodSummary[pid].amt += qty*recPrice(r);
   });
   let prodTable = '<table><thead><tr><th>產編</th><th>加工方式</th><th class="num">數量</th><th class="num">金額</th></tr></thead><tbody>';
   Object.entries(prodSummary).sort((a,b)=>b[1].qty-a[1].qty).slice(0,20).forEach(([pid,s])=>{
@@ -634,6 +1204,7 @@ function generateReport() {
     <div class="card report-section"><h2>二、產品產量排行 (前20名)</h2>${prodTable}</div>
     <div class="card report-section"><h2>三、庫存進銷存月報</h2>${invTable}</div>
     <div class="card report-section"><h2>四、加工進度總覽</h2>${progHtml}</div>
+    <div class="card report-section"><h2>五、製程耗損追蹤</h2>${buildLossReportHtml()}</div>
     <div style="text-align:center;color:var(--text2);font-size:12px;margin-top:20px">報表產生時間: ${new Date().toLocaleString('zh-TW')}</div>
   `;
 }
@@ -659,8 +1230,28 @@ function filterProdTable() {
   let filtered = DB.products;
   if(q) filtered = filtered.filter(p=>(p.code+' '+p.method).toLowerCase().includes(q));
   document.getElementById('prod-tbody').innerHTML = filtered.slice(0,200).map(p=>
-    `<tr><td>${p.id}</td><td>${p.code}</td><td>${p.method}</td><td class="num">$${p.price}</td></tr>`
+    `<tr><td>${p.id}</td><td>${p.code}</td><td>${p.method}</td><td class="num">$${p.price}</td><td><button class="btn btn-outline btn-sm" onclick="editProdPrice('${p.id}')">改價</button></td></tr>`
   ).join('');
+}
+
+function editProdPrice(pid) {
+  const p = DB.products.find(x=>x.id===pid);
+  if(!p) return;
+  const newPrice = prompt(`修改「${p.code}」的預設單價\n目前: $${p.price}\n\n請輸入新單價:`, p.price);
+  if(newPrice === null) return;
+  const val = parseFloat(newPrice);
+  if(isNaN(val) || val < 0) { toast('請輸入有效的數字'); return; }
+  const oldPrice = p.price;
+  p.price = ''+val;
+  saveDB();
+  // Also refresh the product dropdown in piecework
+  const prodSel = document.getElementById('pw-prod');
+  if(prodSel) {
+    prodSel.innerHTML = '';
+    DB.products.forEach(pr=>{ prodSel.add(new Option(`${pr.code} [${pr.method}]`, pr.id)); });
+  }
+  filterProdTable();
+  toast(`單價已更新：$${oldPrice} → $${val}`);
 }
 
 function exportData() {
@@ -725,6 +1316,48 @@ function populateMonthSelects() {
   });
 }
 populateMonthSelects();
+// Init loss tracking with example data if empty
+if(!DB.lossBatches || DB.lossBatches.length===0) {
+  DB.lossBatches = [{
+    product:'DT-220-8620 內外倒角器大', batchId:'1131205', orderDate:'113/12/05',
+    materialKg:3562, unitWeight:0.695, unitPrice:41.1,
+    theoreticalQty:5125, materialCost:146398.2,
+    records:[
+      {stage:'鍛造',vendor:'永鍛',date:'113/12/05',action:'收料',outQty:'',inQty:'3562',stock:'3562',note:'東經→永鍛 3562kg'},
+      {stage:'鍛造',vendor:'永鍛',date:'113/12/31',action:'鍛造完成',outQty:'1290',inQty:'',stock:'3800',note:'第一次鍛造'},
+      {stage:'鍛造',vendor:'永鍛',date:'114/01/15',action:'鍛造完成',outQty:'3800',inQty:'',stock:'5090',note:'第二次鍛造，全部完成'},
+      {stage:'鍛造',vendor:'永鍛',date:'113/12/31',action:'送出',outQty:'',inQty:'',stock:'',note:'送出→泓傑 1290隻'},
+      {stage:'鍛造',vendor:'永鍛',date:'114/04/01',action:'送出',outQty:'',inQty:'',stock:'2510',note:'送出→泓傑 1290隻'},
+      {stage:'鍛造',vendor:'永鍛',date:'114/08/19',action:'送出',outQty:'',inQty:'',stock:'1220',note:'送出→泓傑 1290隻'},
+      {stage:'車床',vendor:'泓傑',date:'113/12/31',action:'收貨',outQty:'',inQty:'1290',stock:'1290',note:'永鍛→泓傑'},
+      {stage:'車床',vendor:'泓傑',date:'114/03/20',action:'送出',outQty:'1289',inQty:'',stock:'1',note:''},
+      {stage:'車床',vendor:'泓傑',date:'114/04/01',action:'收貨',outQty:'',inQty:'1290',stock:'1291',note:'永鍛→泓傑'},
+      {stage:'車床',vendor:'泓傑',date:'114/05/21',action:'送出',outQty:'1275',inQty:'',stock:'16',note:''},
+      {stage:'車床',vendor:'泓傑',date:'114/08/19',action:'收貨',outQty:'',inQty:'1290',stock:'1306',note:'永鍛→泓傑'},
+      {stage:'銑床',vendor:'鐸傑',date:'114/03/20',action:'收貨',outQty:'',inQty:'1289',stock:'1289',note:'泓傑→鐸傑'},
+      {stage:'銑床',vendor:'鐸傑',date:'114/04/05',action:'送出',outQty:'1280',inQty:'',stock:'9',note:'品檢OK後送出，不良9隻'},
+      {stage:'銑床',vendor:'鐸傑',date:'114/05/21',action:'收貨',outQty:'',inQty:'1275',stock:'1284',note:'泓傑→鐸傑'},
+      {stage:'銑床',vendor:'鐸傑',date:'114/06/05',action:'送出',outQty:'1268',inQty:'',stock:'16',note:'品檢OK後送出，不良7隻'},
+      {stage:'熱處理',vendor:'金元達',date:'114/04/05',action:'收貨',outQty:'',inQty:'1280',stock:'1280',note:'鐸傑→金元達'},
+      {stage:'熱處理',vendor:'金元達',date:'114/04/12',action:'送出',outQty:'1278',inQty:'',stock:'2',note:'熱處理損耗2隻'},
+      {stage:'熱處理',vendor:'金元達',date:'114/06/05',action:'收貨',outQty:'',inQty:'1268',stock:'1270',note:'鐸傑→金元達'},
+      {stage:'熱處理',vendor:'金元達',date:'114/06/12',action:'送出',outQty:'1265',inQty:'',stock:'5',note:'熱處理損耗3隻'},
+      {stage:'染黑',vendor:'兆煒',date:'114/04/12',action:'收貨',outQty:'',inQty:'1278',stock:'1278',note:'金元達→兆煒'},
+      {stage:'染黑',vendor:'兆煒',date:'114/04/18',action:'送出',outQty:'1275',inQty:'',stock:'3',note:''},
+      {stage:'染黑',vendor:'兆煒',date:'114/06/12',action:'收貨',outQty:'',inQty:'1265',stock:'1268',note:'金元達→兆煒'},
+      {stage:'染黑',vendor:'兆煒',date:'114/06/18',action:'送出',outQty:'1263',inQty:'',stock:'5',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/04/20',action:'入庫',outQty:'',inQty:'1275',stock:'1275',note:'第一批成品入庫'},
+      {stage:'成品',vendor:'甲舜',date:'114/05/05',action:'出貨',outQty:'480',inQty:'',stock:'795',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/05/22',action:'出貨',outQty:'295',inQty:'',stock:'500',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/06/20',action:'入庫',outQty:'',inQty:'1263',stock:'1763',note:'第二批成品入庫'},
+      {stage:'成品',vendor:'甲舜',date:'114/06/25',action:'出貨',outQty:'644',inQty:'',stock:'1119',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/07/31',action:'出貨',outQty:'545',inQty:'',stock:'574',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/08/14',action:'出貨',outQty:'209',inQty:'',stock:'365',note:''},
+      {stage:'成品',vendor:'甲舜',date:'114/08/27',action:'出貨',outQty:'239',inQty:'',stock:'126',note:''},
+    ]
+  }];
+  saveDB();
+}
 renderDashboard();
 </script>
 </body>
