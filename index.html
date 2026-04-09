@@ -254,18 +254,26 @@ tr:hover { background:var(--hover); }
   <div class="card">
     <h2>🏭 加工進度追蹤</h2>
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px">製程: 毛胚 → 車床 → 鑽孔 → 銑床 → 熱處理 → 噴砂 → 染黑 → 磨刃口 → 成品</p>
-    <div class="progress-row" style="margin-bottom:4px">
-      <div class="progress-cell progress-header">毛胚</div>
-      <div class="progress-cell progress-header">車床完</div>
-      <div class="progress-cell progress-header">鑽孔完</div>
-      <div class="progress-cell progress-header">銑床完</div>
-      <div class="progress-cell progress-header">熱處理</div>
-      <div class="progress-cell progress-header">噴砂完</div>
-      <div class="progress-cell progress-header">染黑</div>
-      <div class="progress-cell progress-header">磨刃口</div>
-      <div class="progress-cell progress-header">成品</div>
+    <div class="table-scroll">
+      <table id="progress-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:80px">批次 ID</th>
+            <th style="text-align:left;min-width:90px">日期</th>
+            <th class="num">毛胚</th>
+            <th class="num">車床完</th>
+            <th class="num">鑽孔完</th>
+            <th class="num">銑床完</th>
+            <th class="num">熱處理</th>
+            <th class="num">噴砂完</th>
+            <th class="num">染黑</th>
+            <th class="num">磨刃口</th>
+            <th class="num">成品</th>
+          </tr>
+        </thead>
+        <tbody id="progress-grid"></tbody>
+      </table>
     </div>
-    <div id="progress-grid"></div>
   </div>
   <div class="card">
     <h2>➕ 更新進度</h2>
@@ -926,10 +934,14 @@ function renderProgress() {
   const grid = document.getElementById('progress-grid');
   const fields = ['blank','lathe','drill','mill','heat','blast','black','grind','done'];
   grid.innerHTML = DB.progress.map(p=>{
-    return `<div class="progress-row">${fields.map(f=>{
-      const v = p[f];
-      return `<div class="progress-cell ${v?'filled':'empty'}">${v||'—'}</div>`;
-    }).join('')}</div>`;
+    return `<tr>
+      <td style="font-weight:600;color:var(--accent)">${p.id||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${p.date||'—'}</td>
+      ${fields.map(f=>{
+        const v = p[f];
+        return `<td class="num" style="${v?'background:#d4edda;color:#155724;font-weight:600':'color:#ccc'}">${v||'—'}</td>`;
+      }).join('')}
+    </tr>`;
   }).join('');
   
   const sel = document.getElementById('prog-id');
