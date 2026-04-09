@@ -131,6 +131,9 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== DASHBOARD ====== -->
 <div id="panel-dashboard" class="panel active">
+  <div class="section-info" style="background:linear-gradient(135deg,#e8f4fd,#f0f7ff);border:1px solid #b8d9f0;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#1a5c8a;line-height:1.7">
+    <strong>📊 儀表板</strong> — 系統首頁，顯示選定年度的<strong>生產總覽</strong>。可以快速查看紀錄數、加工數量、計件金額和庫存萬品數，以及各月產量趨勢圖、員工產量排行和庫存概況。切換上方的年度下拉選單即可查看不同年份的資料。
+  </div>
   <div class="card" style="padding:12px 20px;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:15px;font-weight:600;color:var(--accent2)">📊 年度總覽</span>
@@ -140,15 +143,18 @@ tr:hover { background:var(--hover); }
   <div class="stat-grid" id="dashStats"></div>
   <div class="card">
     <h2>📈 各月產量趨勢</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">以條狀圖顯示每個月的加工數量，方便比較各月的產能變化。</p>
     <div id="monthlyChart"></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div class="card">
       <h2>👷 員工產量排行</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">依加工數量排名，一眼看出誰的產量最高。</p>
       <div id="empChart"></div>
     </div>
     <div class="card">
       <h2>📦 庫存概況</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">各產品目前的庫存量快覽，紅色表示庫存偏低。</p>
       <div id="invSummary"></div>
     </div>
   </div>
@@ -156,8 +162,12 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== PIECEWORK ====== -->
 <div id="panel-piecework" class="panel">
+  <div class="section-info" style="background:linear-gradient(135deg,#e8f9ee,#f0fbf4);border:1px solid #a8ddb8;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#0e6e3e;line-height:1.7">
+    <strong>🔧 計件登記</strong> — 記錄每位員工每天加工的產品數量和出貨數量。系統會自動用<strong>「單價 × 數量」</strong>計算金額，月底可以彙總每位員工的計件薪資。上方表單用來新增紀錄，下方可以用月份、員工和產品搜尋來篩選查看歷史紀錄。
+  </div>
   <div class="card">
     <h2>🔧 新增計件紀錄</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">選擇日期、員工和產品後填入數量，按「新增」即可登記一筆計件紀錄。單價會根據產品自動帶入，也可手動修改。</p>
     <div class="form-row">
       <div class="form-group"><label>日期</label><input type="date" id="pw-date"></div>
       <div class="form-group"><label>員工</label><select id="pw-emp"></select></div>
@@ -171,6 +181,7 @@ tr:hover { background:var(--hover); }
   </div>
   <div class="card">
     <h2>📋 計件紀錄查詢</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">使用下方的篩選條件可以快速找到特定月份、員工或產品的紀錄。條件可以搭配使用，例如同時選月份和員工。</p>
     <div class="filter-bar no-print">
       <label>月份:</label><select id="pw-filter-month" onchange="filterWork()"><option value="">全部月份</option></select>
       <label>員工:</label><select id="pw-filter-emp" onchange="filterWork()"><option value="">全部</option></select>
@@ -193,8 +204,12 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== INVENTORY ====== -->
 <div id="panel-inventory" class="panel">
+  <div class="section-info" style="background:linear-gradient(135deg,#f3effe,#f8f5ff);border:1px solid #c5b3e8;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#5a42a8;line-height:1.7">
+    <strong>📦 庫存管理</strong> — 追蹤每種產品各批號的進貨、銷貨和不良品數量。庫存量由系統自動計算：<strong>進貨 − 銷貨 − 不良品 = 現有庫存</strong>。「各批號庫存總覽」可一眼看出每個批號剩多少，「庫存異動紀錄」則記錄每一筆進出貨的明細。
+  </div>
   <div class="card">
     <h2>📦 新增庫存異動</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">登記一筆進貨、銷貨或不良品紀錄。選擇產品和批號，填入對應數量後按「新增」。庫存量會自動重新計算。</p>
     <div class="form-row">
       <div class="form-group"><label>產品</label><select id="inv-prod"></select></div>
       <div class="form-group"><label>批號</label><input type="text" id="inv-lot" placeholder="例：L2024-001" style="width:140px"></div>
@@ -209,6 +224,7 @@ tr:hover { background:var(--hover); }
   </div>
   <div class="card">
     <h2>📊 各批號庫存總覽</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">顯示每個產品各批號的累計進貨、銷貨、不良品和現有庫存量。可用搜尋框快速找到特定產品或批號。</p>
     <div class="filter-bar no-print">
       <label>搜尋:</label><input type="text" id="inv-lot-filter" placeholder="產品或批號..." oninput="renderLotSummary()" style="width:200px">
     </div>
@@ -216,6 +232,7 @@ tr:hover { background:var(--hover); }
   </div>
   <div class="card">
     <h2>📋 庫存異動紀錄</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">列出所有進出貨和不良品的明細紀錄，包含日期、數量和當時的庫存量。可搜尋或按批號篩選。</p>
     <div class="filter-bar no-print">
       <label>搜尋:</label><input type="text" id="inv-filter" placeholder="產品、批號或備註..." oninput="filterInv()" style="width:200px">
       <label>批號:</label><select id="inv-filter-lot" onchange="filterInv()"><option value="">全部批號</option></select>
@@ -231,6 +248,9 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== PROGRESS ====== -->
 <div id="panel-progress" class="panel">
+  <div class="section-info" style="background:linear-gradient(135deg,#fff8e6,#fffcf0);border:1px solid #e0c97a;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#8a6d10;line-height:1.7">
+    <strong>🏭 加工進度</strong> — 追蹤每批產品從毛胚到成品的<strong>九道製程</strong>進度。上方表格顯示每批產品目前各製程的完成數量，下方表單可以更新指定批次的最新進度數字。選擇批次 ID 後，填入各製程數量再按「更新進度」即可。
+  </div>
   <div class="card">
     <h2>🏭 加工進度追蹤</h2>
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px">製程: 毛胚 → 車床 → 鑽孔 → 銑床 → 熱處理 → 噴砂 → 染黑 → 磨刃口 → 成品</p>
@@ -249,6 +269,7 @@ tr:hover { background:var(--hover); }
   </div>
   <div class="card">
     <h2>➕ 更新進度</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">選擇批次 ID 後，在各製程欄位填入目前的完成數量，按「更新進度」即可更新上方表格。</p>
     <div class="form-row">
       <div class="form-group"><label>選擇批次 ID</label><select id="prog-id"></select></div>
       <div class="form-group"><label>日期</label><input type="date" id="prog-date"></div>
@@ -270,6 +291,9 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== LOSS TRACKING ====== -->
 <div id="panel-loss" class="panel">
+  <div class="section-info" style="background:linear-gradient(135deg,#fef0f0,#fff5f5);border:1px solid #e0a8a8;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#952826;line-height:1.7">
+    <strong>📉 耗損追蹤</strong> — 追蹤每個批次從鐵材到成品的各階段<strong>耗損率</strong>。先選擇產品和批次（或新增批次），再逐步記錄各製程的進出貨數量。系統會自動計算每個階段的<strong>產率（良率）</strong>，幫助品管找出耗損最多的環節來改善。
+  </div>
   <div class="card">
     <h2>📉 製程耗損追蹤</h2>
     <p style="font-size:13px;color:var(--text2);margin-bottom:12px">追蹤每個批次從鐵材到成品的各階段耗損情況。製程：鐵材 → 鍛造 → 車床 → 銑床 → 熱處理 → 染黑 → 成品</p>
@@ -308,6 +332,7 @@ tr:hover { background:var(--hover); }
     <!-- Stage Records -->
     <div class="card">
       <h2>📋 各階段紀錄</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px">記錄批次在各製程階段的收發貨數量。選擇階段、填入數量後按「新增」，系統會自動累計計算各階段存量。</p>
       <div class="form-row" style="margin-bottom:12px">
         <div class="form-group"><label>階段</label>
           <select id="lr-stage">
@@ -334,6 +359,7 @@ tr:hover { background:var(--hover); }
     <!-- Summary -->
     <div class="card">
       <h2>📊 各階段產率對照</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px">對照各製程的投入與產出數量，自動計算每階段的產率（良率）百分比，找出耗損最多的環節。</p>
       <div id="loss-summary"></div>
     </div>
   </div>
@@ -341,8 +367,12 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== REPORT ====== -->
 <div id="panel-report" class="panel">
+  <div class="section-info no-print" style="background:linear-gradient(135deg,#e8f4fd,#f0f7ff);border:1px solid #b8d9f0;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#1a5c8a;line-height:1.7">
+    <strong>📋 月報表</strong> — 選擇月份後，自動產生當月的完整報告，包含：<strong>員工產量與薪資彙總、庫存進銷存月報、加工進度總覽、製程耗損追蹤</strong>。報表可以直接列印，適合月底結算或呈報管理階層使用。
+  </div>
   <div class="card no-print">
     <h2>📋 月報表產生器</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">選擇月份後按「產生報表」，系統會自動整合該月的所有資料生成完整報告。按「列印」可輸出紙本。</p>
     <div class="form-row">
       <div class="form-group"><label>選擇月份</label><select id="rpt-month"><option value="">-- 請選擇 --</option></select></div>
       <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="generateReport()">產生報表</button></div>
@@ -354,6 +384,9 @@ tr:hover { background:var(--hover); }
 
 <!-- ====== DATA MGMT ====== -->
 <div id="panel-data" class="panel">
+  <div class="section-info" style="background:linear-gradient(135deg,#f0f0f0,#f8f8f8);border:1px solid #c8c8c8;border-radius:8px;padding:14px 20px;margin-bottom:12px;font-size:14px;color:#444;line-height:1.7">
+    <strong>💾 資料管理</strong> — 系統的後台管理中心。<strong>「匯出資料」</strong>可將所有資料下載為 JSON 備份檔（建議每週備份一次）；<strong>「匯入資料」</strong>可還原之前匯出的備份；<strong>「重置」</strong>會將資料恢復為原始狀態。下方的產品對照表可以查看和修改計件用的產品單價。
+  </div>
   <div class="card">
     <h2>💾 資料管理</h2>
     <div style="display:flex;gap:12px;flex-wrap:wrap">
