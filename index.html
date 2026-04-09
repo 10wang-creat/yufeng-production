@@ -126,6 +126,7 @@ tr:hover { background:var(--hover); }
   <button onclick="showPanel('loss')">📉 耗損追蹤</button>
   <button onclick="showPanel('report')">📋 月報表</button>
   <button onclick="showPanel('data')">💾 資料管理</button>
+  <button onclick="showPanel('tutorial')" style="background:#fff3cd;color:#8a5600;border:2px dashed #d4a017">🎮 操作教學</button>
 </nav>
 
 <!-- ====== DASHBOARD ====== -->
@@ -133,7 +134,7 @@ tr:hover { background:var(--hover); }
   <div class="card" style="padding:12px 20px;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:15px;font-weight:600;color:var(--accent2)">📊 年度總覽</span>
-      <select id="dash-year" onchange="renderDashboard()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:15px;font-weight:600;font-family:inherit;background:#fff"></select>
+      <select id="dash-year" onchange="renderDashboard();window._tutActions.yearChanged=true" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:15px;font-weight:600;font-family:inherit;background:#fff"></select>
     </div>
   </div>
   <div class="stat-grid" id="dashStats"></div>
@@ -381,6 +382,68 @@ tr:hover { background:var(--hover); }
   </div>
 </div>
 
+<!-- ====== TUTORIAL GAME ====== -->
+<div id="panel-tutorial" class="panel">
+  <!-- 頂部狀態列 -->
+  <div class="card" style="padding:20px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-size:24px;display:block;border:none;padding:0;margin:0">🎮 系統操作教學</h2>
+        <div id="tut-chapter-label" style="font-size:15px;color:var(--text2);margin-top:4px"></div>
+      </div>
+      <div style="display:flex;gap:24px;font-size:18px;align-items:center">
+        <span>🔥 <strong id="tut-combo">0</strong> 連續</span>
+        <span>⭐ <strong id="tut-score">0</strong> 分</span>
+        <span>📋 <strong id="tut-step-num">0</strong>/<strong id="tut-total">0</strong></span>
+      </div>
+    </div>
+    <div style="width:100%;height:14px;background:#e8e4db;border-radius:7px;overflow:hidden;margin-top:14px">
+      <div id="tut-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#1d7a4e,#2ab06a);border-radius:7px;transition:width 0.5s ease"></div>
+    </div>
+    <!-- 章節進度圓點 -->
+    <div id="tut-chapter-dots" style="display:flex;justify-content:center;gap:8px;margin-top:12px"></div>
+  </div>
+
+  <!-- 主任務區 -->
+  <div class="card" id="tut-mission-card" style="min-height:260px">
+    <div id="tut-mission-area">
+      <div style="text-align:center;padding:50px 20px">
+        <div style="font-size:72px;margin-bottom:20px">🎓</div>
+        <p style="font-size:26px;font-weight:700;color:var(--accent2);margin-bottom:12px">歡迎來到系統操作教學！</p>
+        <p style="font-size:19px;color:var(--text2);margin-bottom:8px;line-height:1.8">
+          共 <strong>5 個章節、20 個任務</strong>，帶您從頭學會每個功能。
+        </p>
+        <p style="font-size:17px;color:var(--text2);margin-bottom:28px;line-height:1.8">
+          包含實際操作練習和小測驗，完成後您就能獨立使用系統！<br>
+          進度會自動儲存，隨時可以繼續。
+        </p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-success" style="font-size:22px;padding:16px 48px;border-radius:14px" onclick="tutStart()">🚀 開始學習</button>
+          <button class="btn btn-outline" style="font-size:18px;padding:14px 28px;border-radius:14px" id="tut-resume-btn" style="display:none" onclick="tutResume()">📂 繼續上次進度</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示區 -->
+  <div class="card" id="tut-hint-card" style="display:none;background:#fffbe6;border-color:#d4a017">
+    <p style="font-size:18px;line-height:1.8">💡 <strong>提示：</strong><span id="tut-hint-text"></span></p>
+  </div>
+
+  <!-- 問答區 -->
+  <div class="card" id="tut-quiz-card" style="display:none">
+    <h3 id="tut-quiz-q" style="font-size:20px;margin-bottom:16px;line-height:1.6"></h3>
+    <div id="tut-quiz-options"></div>
+    <div id="tut-quiz-feedback" style="margin-top:14px;font-size:18px;display:none"></div>
+  </div>
+
+  <!-- 已完成紀錄 -->
+  <div class="card" id="tut-history-card" style="display:none">
+    <h2 style="font-size:18px">📝 完成紀錄</h2>
+    <div id="tut-history" style="margin-top:12px"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 </div>
 
@@ -413,17 +476,23 @@ function invProdInfo(id) { const p = DB.invProducts.find(x=>x.id==id); return p|
 function custName(id) { const c = DB.customers.find(x=>x.id==id); return c?c.name:id; }
 
 // ====== NAV ======
+// Tutorial tracking
+window._tutVisited = new Set();
+window._tutActions = {};
+
 function showPanel(name) {
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   event.target.classList.add('active');
+  window._tutVisited.add(name);
   if (name==='dashboard') renderDashboard();
   if (name==='piecework') renderPiecework();
   if (name==='inventory') renderInventory();
   if (name==='progress') renderProgress();
   if (name==='loss') renderLossPanel();
   if (name==='data') renderDataPanel();
+  if (name==='tutorial') tutRender();
 }
 
 // ====== TOAST ======
@@ -1359,6 +1428,511 @@ if(!DB.lossBatches || DB.lossBatches.length===0) {
   saveDB();
 }
 renderDashboard();
+
+// ====== TUTORIAL GAME v2 ======
+(function(){
+  // --- Audio ---
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let _actx;
+  function getACtx(){ if(!_actx) try{ _actx=new AudioCtx(); }catch(e){} return _actx; }
+  function playTone(freq,dur,type){
+    const a=getACtx(); if(!a) return;
+    const o=a.createOscillator(), g=a.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.15,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime+dur);
+  }
+  function sfxPass(){ playTone(660,0.12); setTimeout(()=>playTone(880,0.18),120); }
+  function sfxFail(){ playTone(300,0.25,'square'); }
+  function sfxCombo(){ playTone(660,0.08); setTimeout(()=>playTone(830,0.08),80); setTimeout(()=>playTone(1050,0.15),160); }
+  function sfxFinish(){ [0,150,300,450].forEach((d,i)=>setTimeout(()=>playTone(520+i*120,0.2),d)); }
+
+  // --- Highlight ---
+  let _hlEls=[];
+  function tutHighlight(sel){
+    tutClearHL();
+    if(!sel) return;
+    const els = typeof sel==='string' ? document.querySelectorAll(sel) : [sel];
+    els.forEach(el=>{
+      if(!el) return;
+      el.classList.add('tut-hl');
+      _hlEls.push(el);
+      el.scrollIntoView({behavior:'smooth',block:'center'});
+    });
+  }
+  function tutClearHL(){ _hlEls.forEach(el=>el.classList.remove('tut-hl')); _hlEls=[]; }
+
+  // --- Chapters ---
+  const CHAPTERS = [
+    {name:'認識系統', icon:'🏠', color:'#1a5c8a'},
+    {name:'計件登記', icon:'🔧', color:'#0e6e3e'},
+    {name:'查詢篩選', icon:'🔍', color:'#8a5600'},
+    {name:'庫存管理', icon:'📦', color:'#5a42a8'},
+    {name:'報表與備份', icon:'📋', color:'#b83230'},
+  ];
+
+  // --- Missions ---
+  const M = [
+    // CH1 認識系統 (0-2)
+    { ch:0, title:'進入儀表板', type:'action',
+      desc:'請點擊上方選單列的<strong>「📊 儀表板」</strong>按鈕，這是系統的首頁。',
+      hint:'在頁面上方有一排按鈕，最左邊就是「📊 儀表板」，點一下。', hl:'.nav button:first-child',
+      check:()=> window._tutVisited.has('dashboard'),
+      pts:10, explain:'儀表板顯示年度總覽、產量趨勢、員工排行和庫存概況，是系統的核心頁面。' },
+    { ch:0, title:'切換查看年度', type:'action',
+      desc:'在儀表板上方，有一個<strong>「年度」下拉選單</strong>。請先到儀表板，然後點擊選單選擇不同的年份。',
+      hint:'先點「📊 儀表板」，在「📊 年度總覽」旁邊有下拉選單（顯示年份），選擇其他年份。', hl:'#dash-year',
+      check:()=>{ return !!window._tutActions.yearChanged; },
+      pts:10, explain:'切換年份可以查看不同年度的生產數據。下拉選單是系統中常見的操作方式。' },
+    { ch:0, title:'認識選單功能', type:'quiz',
+      desc:'小測驗：系統上方有幾個功能選單按鈕？',
+      quiz:{ q:'上方選單列總共有幾個功能按鈕？（不含操作教學）', opts:['5個','6個','7個','8個'], ans:2 },
+      pts:15, explain:'系統共有 7 個功能：儀表板、計件登記、庫存管理、加工進度、耗損追蹤、月報表、資料管理。' },
+
+    // CH2 計件登記 (3-7)
+    { ch:1, title:'進入計件登記', type:'action',
+      desc:'請點擊上方的<strong>「🔧 計件登記」</strong>按鈕。',
+      hint:'在上方按鈕列中，第二個就是「🔧 計件登記」。', hl:'.nav button:nth-child(2)',
+      check:()=> window._tutVisited.has('piecework'),
+      pts:10, explain:'計件登記是記錄員工每日加工數量的核心功能，也是計算薪資的依據。' },
+    { ch:1, title:'選擇日期', type:'action',
+      desc:'在「新增計件紀錄」區，請點擊<strong>「日期」欄位</strong>，選擇任意一天。<br>（需要先到「計件登記」頁面操作）',
+      hint:'先點「🔧 計件登記」，在表單第一個欄位「日期」，點一下會出現日曆，選一個日期。', hl:'#pw-date',
+      check:()=>{ const d=document.getElementById('pw-date'); return d&&d.value&&d.value.length===10; },
+      pts:10, explain:'每筆紀錄都需要日期。系統會根據日期自動歸類到對應月份，方便月結統計。' },
+    { ch:1, title:'選擇員工', type:'action',
+      desc:'請點擊<strong>「員工」下拉選單</strong>，選擇任一位員工。',
+      hint:'在日期旁邊有「員工」下拉選單，點開後選擇任何一位員工。', hl:'#pw-emp',
+      check:()=>{ const s=document.getElementById('pw-emp'); return s&&s.value; },
+      pts:10, explain:'選擇員工後，系統會記錄是誰做的，月底就能自動計算每位員工的薪資。' },
+    { ch:1, title:'選擇產品', type:'action',
+      desc:'請點擊<strong>「產品」下拉選單</strong>，選擇一項產品。注意看右邊的「單價」會自動帶入！',
+      hint:'「產品」下拉選單在員工旁邊，選好後看看「單價」欄位會自動填入預設金額。', hl:'#pw-prod',
+      check:()=>{ const s=document.getElementById('pw-prod'); return s&&s.value; },
+      pts:10, explain:'選擇產品後，單價會自動帶入。如果要調整單價，可以直接修改單價欄位的數字。' },
+    { ch:1, title:'填寫數量', type:'action',
+      desc:'請在<strong>「數量」欄位</strong>輸入一個數字（例如：100）。',
+      hint:'找到「數量」欄位，點一下後用鍵盤輸入一個數字，例如 100。', hl:'#pw-qty',
+      check:()=>{ const q=document.getElementById('pw-qty'); return q&&Number(q.value)>0; },
+      pts:10, explain:'數量代表員工加工了多少個產品。系統會自動用「單價 × 數量」計算金額。' },
+
+    // CH3 查詢與篩選 (8-11)
+    { ch:2, title:'月份篩選', type:'action',
+      desc:'在「計件紀錄查詢」區，請使用<strong>「月份」下拉選單</strong>選擇任一個月份來篩選紀錄。',
+      hint:'往下滾動到「📋 計件紀錄查詢」區域，左邊有「月份」下拉選單，選擇一個月份。', hl:'#pw-filter-month',
+      check:()=>{ const s=document.getElementById('pw-filter-month'); return s&&s.value!==''; },
+      pts:15, explain:'月份篩選可以只顯示某個月的紀錄，方便對帳和月結。選「全部月份」就能看到所有紀錄。' },
+    { ch:2, title:'員工篩選', type:'action',
+      desc:'在同一區域，請使用<strong>「員工」下拉選單</strong>篩選特定員工的紀錄。',
+      hint:'在月份旁邊有「員工」下拉選單，選擇一位員工就能只看他的紀錄。', hl:'#pw-filter-emp',
+      check:()=>{ const s=document.getElementById('pw-filter-emp'); return s&&s.value!==''; },
+      pts:15, explain:'員工篩選可以單獨查看某位員工的工作紀錄，方便核對個人產量。' },
+    { ch:2, title:'搜尋產品', type:'action',
+      desc:'請在<strong>「搜尋產品」輸入框</strong>中，輸入任意文字（例如產品編號的前幾個字）。',
+      hint:'在篩選列最右邊有「搜尋產品」輸入框，輸入幾個字就會自動篩選。', hl:'#pw-filter-prod',
+      check:()=>{ const s=document.getElementById('pw-filter-prod'); return s&&s.value.length>0; },
+      pts:15, explain:'搜尋框可以快速找到特定產品的紀錄，不用一頁一頁翻找。輸入部分文字就能篩選。' },
+    { ch:2, title:'理解篩選功能', type:'quiz',
+      desc:'小測驗：關於篩選功能的使用方式。',
+      quiz:{ q:'如果我想看「3月份、王大明」的紀錄，應該怎麼做？',
+        opts:['只選月份就好','只選員工就好','月份和員工都要選','要在搜尋框打名字'], ans:2 },
+      pts:20, explain:'篩選條件可以同時使用！選了月份又選了員工，就能精確找到特定人在特定月份的紀錄。' },
+
+    // CH4 庫存管理 (12-15)
+    { ch:3, title:'進入庫存管理', type:'action',
+      desc:'請點擊上方的<strong>「📦 庫存管理」</strong>按鈕。',
+      hint:'在上方按鈕列中找到「📦 庫存管理」。', hl:'.nav button:nth-child(3)',
+      check:()=> window._tutVisited.has('inventory'),
+      pts:10, explain:'庫存管理追蹤每種產品的進貨、銷貨和不良品數量，隨時掌握庫存狀況。' },
+    { ch:3, title:'認識庫存欄位', type:'quiz',
+      desc:'小測驗：看看庫存管理的表單有哪些欄位。',
+      quiz:{ q:'「新增庫存異動」表單中，哪一個欄位是用來記錄壞掉的產品數量？',
+        opts:['進貨數量','銷貨數量','不良品','備註'], ans:2 },
+      pts:15, explain:'「不良品」欄位記錄損壞或不合格的產品。系統會自動從庫存中扣除不良品數量。' },
+    { ch:3, title:'搜尋庫存', type:'action',
+      desc:'在「各批號庫存總覽」區域，請在<strong>搜尋框</strong>中輸入任意文字來查詢。',
+      hint:'往下滾動到「📊 各批號庫存總覽」，上面有搜尋框，輸入幾個字試試。', hl:'#inv-lot-filter',
+      check:()=>{ const s=document.getElementById('inv-lot-filter'); return s&&s.value.length>0; },
+      pts:15, explain:'庫存搜尋可以快速找到特定產品或批號的庫存數量，比一筆一筆找快多了。' },
+    { ch:3, title:'庫存計算原理', type:'quiz',
+      desc:'小測驗：了解庫存數量如何計算。',
+      quiz:{ q:'庫存量是怎麼計算的？', opts:['手動輸入目前數量','進貨 − 銷貨 − 不良品','只看進貨數量','每月盤點一次'], ans:1 },
+      pts:20, explain:'系統自動計算：庫存量 = 累計進貨 − 累計銷貨 − 累計不良品。不用手動算！' },
+
+    // CH5 報表與備份 (16-19)
+    { ch:4, title:'查看月報表', type:'action',
+      desc:'請點擊<strong>「📋 月報表」</strong>，然後選擇一個月份產生報告。',
+      hint:'先點上方「📋 月報表」按鈕，再從下拉選單選一個月份。', hl:'.nav button:nth-child(6)',
+      check:()=>{ const s=document.getElementById('rpt-month'); return window._tutVisited.has('report')&&s&&s.value; },
+      pts:15, explain:'月報表整合了當月所有資料，包含產量、薪資、庫存等，適合每月結算列印。' },
+    { ch:4, title:'認識資料管理', type:'action',
+      desc:'請點擊<strong>「💾 資料管理」</strong>按鈕，看看有哪些功能。',
+      hint:'在上方最右邊找到「💾 資料管理」按鈕。', hl:'.nav button:nth-child(7)',
+      check:()=> window._tutVisited.has('data'),
+      pts:10, explain:'資料管理是系統的後台，可以匯出備份、匯入資料和查看產品對照表。' },
+    { ch:4, title:'備份的重要性', type:'quiz',
+      desc:'小測驗：關於資料備份的知識。',
+      quiz:{ q:'為什麼要定期使用「匯出全部資料」功能？',
+        opts:['讓系統跑更快','把資料存到雲端','萬一電腦出問題還有備份','老闆要求的'], ans:2 },
+      pts:20, explain:'資料存在瀏覽器裡，如果清除瀏覽器資料或換電腦就會消失。定期匯出 JSON 備份非常重要！' },
+    { ch:4, title:'畢業測驗', type:'quiz',
+      desc:'最後一題！測試您對整個系統的理解。',
+      quiz:{ q:'如果您想知道「王大明上個月總共賺了多少錢」，最快的方法是？',
+        opts:['去儀表板看','去計件登記，選月份和員工，看月薪彙總','去月報表','去資料管理查'], ans:1 },
+      pts:25, explain:'在「計件登記」頁面，先用上方篩選選好月份，下方就會出現「員工月薪彙總」，一目了然！' },
+  ];
+
+  const TOTAL_PTS = M.reduce((s,m)=>s+m.pts,0);
+  const SAVE_KEY = 'yufeng_tutorial_v2';
+
+  let S = { started:false, cur:0, score:0, combo:0, maxCombo:0, done:[], quizAns:null };
+
+  function save(){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(S)); }catch(e){} }
+  function load(){ try{ const d=JSON.parse(localStorage.getItem(SAVE_KEY)); if(d&&d.started) return d; }catch(e){} return null; }
+
+  // --- Init ---
+  window.tutRender = function(){
+    const saved = load();
+    const btn = document.getElementById('tut-resume-btn');
+    if(btn) btn.style.display = (saved&&saved.cur<M.length) ? 'inline-block' : 'none';
+    if(S.started) renderMission();
+  };
+
+  window.tutStart = function(){
+    S = { started:true, cur:0, score:0, combo:0, maxCombo:0, done:[], quizAns:null };
+    window._tutVisited = new Set();
+    window._tutActions = {};
+    save();
+    document.getElementById('tut-total').textContent = M.length;
+    document.getElementById('tut-history-card').style.display='block';
+    renderMission();
+    startChecker();
+  };
+
+  window.tutResume = function(){
+    const saved = load();
+    if(!saved) return tutStart();
+    S = saved;
+    document.getElementById('tut-total').textContent = M.length;
+    document.getElementById('tut-history-card').style.display='block';
+    renderMission();
+    startChecker();
+    toast('📂 已載入上次進度！繼續第 '+(S.cur+1)+' 題');
+  };
+
+  // --- Render ---
+  function renderMission(){
+    const area = document.getElementById('tut-mission-area');
+    const step = S.cur;
+    document.getElementById('tut-score').textContent = S.score;
+    document.getElementById('tut-combo').textContent = S.combo;
+    document.getElementById('tut-step-num').textContent = Math.min(step+1, M.length);
+    document.getElementById('tut-total').textContent = M.length;
+    document.getElementById('tut-progress-fill').style.width = (S.done.length/M.length*100)+'%';
+    renderChapterDots();
+    document.getElementById('tut-quiz-card').style.display='none';
+    document.getElementById('tut-hint-card').style.display='none';
+    tutClearHL();
+
+    if(step>=M.length){ renderComplete(area); return; }
+
+    const m = M[step];
+    const ch = CHAPTERS[m.ch];
+    document.getElementById('tut-chapter-label').innerHTML =
+      `<span style="color:${ch.color};font-weight:600">${ch.icon} 第${m.ch+1}章：${ch.name}</span> — 任務 ${step+1}/${M.length}`;
+
+    if(m.type==='quiz'){
+      renderQuizMission(area, m, step);
+    } else {
+      renderActionMission(area, m, step);
+      if(m.hl) setTimeout(()=>tutHighlight(m.hl),300);
+    }
+    renderHistory();
+    save();
+  }
+
+  function renderActionMission(area, m, step){
+    const ch = CHAPTERS[m.ch];
+    area.innerHTML = `
+      <div style="text-align:center;padding:24px 20px">
+        <div style="display:inline-block;background:${ch.color};color:#fff;padding:6px 20px;border-radius:20px;font-size:15px;font-weight:600;margin-bottom:16px">
+          ${ch.icon} 第${m.ch+1}章 — 任務 ${step+1}
+        </div>
+        <h3 style="font-size:24px;color:var(--accent2);margin:12px 0">${m.title}</h3>
+        <p style="font-size:20px;line-height:2;margin-bottom:20px;color:var(--text)">${m.desc}</p>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-outline" style="font-size:18px;padding:12px 28px" onclick="tutShowHint()">💡 提示</button>
+          <button class="btn btn-primary" style="font-size:18px;padding:12px 28px" onclick="tutCheckNow()">✅ 我完成了</button>
+        </div>
+        <div id="tut-feedback" style="margin-top:16px;font-size:18px;display:none"></div>
+      </div>`;
+  }
+
+  function renderQuizMission(area, m, step){
+    const ch = CHAPTERS[m.ch];
+    area.innerHTML = `
+      <div style="text-align:center;padding:24px 20px">
+        <div style="display:inline-block;background:${ch.color};color:#fff;padding:6px 20px;border-radius:20px;font-size:15px;font-weight:600;margin-bottom:16px">
+          ${ch.icon} 第${m.ch+1}章 — 任務 ${step+1}
+        </div>
+        <h3 style="font-size:24px;color:var(--accent2);margin:12px 0">📝 ${m.title}</h3>
+        <p style="font-size:19px;color:var(--text2)">${m.desc}</p>
+      </div>`;
+    // show quiz card
+    const qCard = document.getElementById('tut-quiz-card');
+    qCard.style.display='block';
+    document.getElementById('tut-quiz-q').textContent = m.quiz.q;
+    document.getElementById('tut-quiz-feedback').style.display='none';
+    S.quizAns = null;
+    const optsDiv = document.getElementById('tut-quiz-options');
+    optsDiv.innerHTML = m.quiz.opts.map((o,i)=>`
+      <button class="tut-quiz-opt" onclick="tutQuizPick(${i})" style="display:block;width:100%;text-align:left;padding:14px 20px;margin-bottom:8px;border:2px solid var(--border);border-radius:10px;background:#fff;font-size:18px;cursor:pointer;font-family:inherit;transition:all 0.2s">
+        <strong style="color:var(--accent);margin-right:8px">${String.fromCharCode(65+i)}.</strong> ${o}
+      </button>`).join('');
+    qCard.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+
+  window.tutQuizPick = function(idx){
+    if(S.quizAns!==null) return; // already answered
+    S.quizAns = idx;
+    const m = M[S.cur];
+    const correct = idx === m.quiz.ans;
+    const btns = document.querySelectorAll('.tut-quiz-opt');
+    btns.forEach((b,i)=>{
+      b.style.pointerEvents='none';
+      if(i===m.quiz.ans) { b.style.borderColor='var(--green)'; b.style.background='#e5f5ec'; }
+      if(i===idx && !correct) { b.style.borderColor='var(--red)'; b.style.background='#fce8e8'; }
+    });
+    const fb = document.getElementById('tut-quiz-feedback');
+    fb.style.display='block';
+    if(correct){
+      sfxPass();
+      S.combo++;
+      if(S.combo>S.maxCombo) S.maxCombo=S.combo;
+      const bonus = S.combo>=3 ? 5 : 0;
+      const total = m.pts + bonus;
+      S.score += total;
+      S.done.push({title:m.title, pts:total, ch:m.ch});
+      fb.innerHTML = `<span style="color:var(--green);font-size:20px">✅ 正確！+${m.pts}分${bonus?' <span style="color:var(--amber)">🔥 連續加分 +'+bonus+'</span>':''}</span>`;
+      if(S.combo>=3) sfxCombo();
+      save();
+      setTimeout(()=>{
+        S.cur++;
+        save();
+        goTutorial();
+        renderMission();
+      }, 2000);
+    } else {
+      sfxFail();
+      S.combo=0;
+      fb.innerHTML = `<span style="color:var(--red);font-size:20px">❌ 不對喔！正確答案是 <strong>${String.fromCharCode(65+m.quiz.ans)}. ${m.quiz.opts[m.quiz.ans]}</strong></span>
+        <br><span style="font-size:17px;color:var(--text2)">${m.explain}</span>
+        <br><button class="btn btn-primary" style="font-size:17px;padding:10px 24px;margin-top:12px" onclick="tutQuizRetry()">👉 繼續下一題</button>`;
+      S.score += Math.floor(m.pts*0.3); // partial credit
+      S.done.push({title:m.title, pts:Math.floor(m.pts*0.3), ch:m.ch});
+      save();
+    }
+    renderHistory();
+  };
+
+  window.tutQuizRetry = function(){
+    S.cur++;
+    save();
+    goTutorial();
+    renderMission();
+  };
+
+  // --- Action check ---
+  window.tutShowHint = function(){
+    const m = M[S.cur]; if(!m||!m.hint) return;
+    document.getElementById('tut-hint-text').textContent = m.hint;
+    document.getElementById('tut-hint-card').style.display='block';
+    document.getElementById('tut-hint-card').scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+
+  window.tutCheckNow = function(){
+    if(S.cur>=M.length) return;
+    const m = M[S.cur];
+    if(m.type==='quiz') return;
+    if(m.check()){
+      sfxPass();
+      S.combo++;
+      if(S.combo>S.maxCombo) S.maxCombo=S.combo;
+      const bonus = S.combo>=3 ? 5 : 0;
+      const total = m.pts + bonus;
+      S.score += total;
+      S.done.push({title:m.title, pts:total, ch:m.ch});
+      if(S.combo>=3) sfxCombo();
+      tutClearHL();
+
+      const area = document.getElementById('tut-mission-area');
+      area.innerHTML = `
+        <div style="text-align:center;padding:30px 20px">
+          <div style="font-size:56px;margin-bottom:12px">✅</div>
+          <h3 style="font-size:24px;color:var(--green);margin-bottom:8px">完成！+${total} 分 ${bonus?'<span style="color:var(--amber)">🔥</span>':''}</h3>
+          <p style="font-size:18px;color:var(--text2);margin-bottom:20px;line-height:1.8">${m.explain}</p>
+          <button class="btn btn-primary" style="font-size:20px;padding:14px 36px;border-radius:12px" onclick="tutNext()">
+            ${S.cur+1>=M.length ? '🎉 查看成績' : '👉 下一題'}
+          </button>
+        </div>`;
+      document.getElementById('tut-hint-card').style.display='none';
+      S.cur++;
+      save();
+      renderHistory();
+    } else {
+      sfxFail();
+      S.combo=0;
+      const fb = document.getElementById('tut-feedback');
+      fb.style.display='block';
+      fb.innerHTML = '<span style="color:var(--red)">❌ 還沒完成喔！請依照說明操作後再按「我完成了」。</span>';
+      fb.style.animation='none'; fb.offsetHeight; fb.style.animation='tutShake 0.4s ease';
+    }
+  };
+
+  window.tutNext = function(){
+    goTutorial();
+    renderMission();
+  };
+
+  // --- Complete ---
+  function renderComplete(area){
+    tutClearHL();
+    sfxFinish();
+    document.getElementById('tut-quiz-card').style.display='none';
+    document.getElementById('tut-hint-card').style.display='none';
+    document.getElementById('tut-progress-fill').style.width='100%';
+    document.getElementById('tut-chapter-label').innerHTML='<span style="color:var(--green);font-weight:600">🎓 全部完成！</span>';
+    const pct = Math.round(S.score/TOTAL_PTS*100);
+    const stars = pct>=90?'🌟🌟🌟':pct>=70?'🌟🌟':pct>=50?'🌟':'';
+    const grade = pct>=90?'S 級 — 大師':pct>=70?'A 級 — 優秀':pct>=50?'B 級 — 不錯':'C 級 — 加油';
+    area.innerHTML = `
+      <div style="text-align:center;padding:40px 20px" id="tut-complete-area">
+        <div style="font-size:80px;margin-bottom:16px">🎉</div>
+        <h3 style="font-size:28px;color:var(--green);margin-bottom:16px">恭喜您完成全部教學！</h3>
+        <div style="display:inline-block;background:#f5f5f0;border-radius:16px;padding:24px 40px;margin-bottom:20px">
+          <p style="font-size:22px;margin-bottom:8px">總得分：<strong style="color:var(--accent);font-size:32px">${S.score}</strong> / ${TOTAL_PTS} 分</p>
+          <p style="font-size:40px;margin:8px 0">${stars||'⭐'}</p>
+          <p style="font-size:20px;color:var(--text2)">${grade}</p>
+          <p style="font-size:16px;color:var(--text2);margin-top:8px">最高連續答對：${S.maxCombo} 題 🔥</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:500px;margin:20px auto">
+          ${CHAPTERS.map((ch,i)=>{
+            const done = S.done.filter(d=>d.ch===i).length;
+            const total = M.filter(m=>m.ch===i).length;
+            return `<div style="background:${ch.color}15;border:2px solid ${ch.color};border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:24px">${ch.icon}</div>
+              <div style="font-size:13px;color:${ch.color};font-weight:600">${done}/${total}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <p style="font-size:19px;color:var(--text2);margin:20px 0;line-height:1.8">
+          您已經學會了系統所有基本操作！<br>現在可以放心使用了。如果忘記了隨時回來複習。
+        </p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-success" style="font-size:18px;padding:12px 36px;border-radius:10px" onclick="tutStart()">🔄 重新開始</button>
+        </div>
+      </div>`;
+    // confetti
+    launchConfetti();
+  }
+
+  // --- Chapter dots ---
+  function renderChapterDots(){
+    const el = document.getElementById('tut-chapter-dots');
+    el.innerHTML = CHAPTERS.map((ch,i)=>{
+      const missions = M.filter(m=>m.ch===i);
+      const doneCount = S.done.filter(d=>d.ch===i).length;
+      const isCurrent = S.cur<M.length && M[S.cur].ch===i;
+      const allDone = doneCount>=missions.length;
+      const bg = allDone?ch.color:(isCurrent?ch.color+'40':'#ddd');
+      const border = isCurrent?`3px solid ${ch.color}`:'2px solid transparent';
+      return `<div title="第${i+1}章：${ch.name} (${doneCount}/${missions.length})" style="width:36px;height:36px;border-radius:50%;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:16px;cursor:default;transition:all 0.3s">
+        ${allDone?'✓':ch.icon}
+      </div>`;
+    }).join('');
+  }
+
+  // --- History ---
+  function renderHistory(){
+    const el = document.getElementById('tut-history');
+    if(!S.done.length){ el.innerHTML='<p style="color:var(--text2);font-size:15px">尚無紀錄</p>'; return; }
+    el.innerHTML = S.done.slice().reverse().map((d,i)=>{
+      const ch=CHAPTERS[d.ch];
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:${i%2===0?'#f5f5f0':'#fff'};border-radius:6px;margin-bottom:3px">
+        <span style="font-size:16px">${ch.icon}</span>
+        <span style="flex:1;font-size:14px">${d.title}</span>
+        <span style="color:var(--green);font-weight:600;font-size:13px">+${d.pts}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // --- Helpers ---
+  function goTutorial(){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-tutorial').classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b=>{
+      b.classList.remove('active');
+      if(b.textContent.includes('操作教學')) b.classList.add('active');
+    });
+  }
+
+  let _checkerOn=false;
+  function startChecker(){
+    if(_checkerOn) return; _checkerOn=true;
+    setInterval(()=>{
+      if(!S.started||S.cur>=M.length) return;
+      const m=M[S.cur];
+      if(m.type!=='action') return;
+      if(m.check&&m.check()){
+        const onTut=document.getElementById('panel-tutorial').classList.contains('active');
+        if(!onTut){
+          sfxPass();
+          S.combo++; if(S.combo>S.maxCombo)S.maxCombo=S.combo;
+          const bonus=S.combo>=3?5:0;
+          S.score+=m.pts+bonus;
+          S.done.push({title:m.title,pts:m.pts+bonus,ch:m.ch});
+          S.cur++;
+          save();
+          toast('✅ '+m.title+' 完成！+'+(m.pts+bonus)+'分');
+        }
+      }
+    },800);
+  }
+
+  // --- Confetti ---
+  function launchConfetti(){
+    const c=document.getElementById('tut-complete-area'); if(!c) return;
+    for(let i=0;i<40;i++){
+      const p=document.createElement('div');
+      p.className='tut-confetti';
+      p.style.left=Math.random()*100+'%';
+      p.style.background=['#f44','#4a4','#44f','#fa4','#f4a','#4af'][Math.floor(Math.random()*6)];
+      p.style.animationDelay=Math.random()*1.5+'s';
+      p.style.animationDuration=(1.5+Math.random()*1.5)+'s';
+      c.style.position='relative'; c.style.overflow='hidden';
+      c.appendChild(p);
+    }
+    setTimeout(()=>document.querySelectorAll('.tut-confetti').forEach(e=>e.remove()),4000);
+  }
+})();
+
+// Tutorial CSS
+(function(){
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes tutShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+    @keyframes tutHLPulse { 0%,100%{box-shadow:0 0 0 3px rgba(255,140,0,0.5)} 50%{box-shadow:0 0 0 8px rgba(255,140,0,0.25)} }
+    @keyframes tutConfettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(400px) rotate(720deg);opacity:0} }
+    .tut-hl { animation: tutHLPulse 1.2s ease-in-out infinite !important; border-radius:6px; position:relative; z-index:5; }
+    .tut-confetti { position:absolute; top:-10px; width:10px; height:10px; border-radius:2px; animation:tutConfettiFall 2s ease-out forwards; pointer-events:none; }
+    #panel-tutorial .btn { transition: all 0.2s; }
+    #panel-tutorial .btn:hover { transform: scale(1.04); }
+    .tut-quiz-opt:hover { border-color:var(--accent) !important; background:#f0f8ff !important; }
+  `;
+  document.head.appendChild(style);
+})();
 </script>
 </body>
 </html>
